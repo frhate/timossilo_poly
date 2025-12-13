@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
-  confirmationSessions,
   sendConfirmationSuccessMessage,
   sendAdminNotification,
   getTelegramBot
@@ -20,14 +19,20 @@ export async function POST(request: NextRequest) {
       const messageId = callbackQuery.message.message_id
 
       const bot = getTelegramBot()
+      const supabase = await createClient()
 
       // Confirm order
       if (data.startsWith('confirm_order_')) {
         const orderId = data.replace('confirm_order_', '')
 
-        // Check if session exists
-        const session = confirmationSessions.get(orderId)
-        if (!session) {
+        // Check if session exists in database
+        const { data: session, error: sessionError } = await supabase
+          .from('confirmation_sessions')
+          .select('*')
+          .eq('order_id', orderId)
+          .single()
+
+        if (!session || sessionError) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: '⚠️ Cette demande a expiré.',
             show_alert: true
@@ -36,8 +41,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if session is expired
-        if (session.expiresAt < new Date()) {
-          confirmationSessions.delete(orderId)
+        if (new Date(session.expires_at) < new Date()) {
+          await supabase
+            .from('confirmation_sessions')
+            .delete()
+            .eq('order_id', orderId)
+
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: '⚠️ Cette demande a expiré.',
             show_alert: true
@@ -46,7 +55,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Update order status in database
-        const supabase = await createClient()
         const { error } = await supabase
           .from('orders')
           .update({
@@ -72,7 +80,7 @@ export async function POST(request: NextRequest) {
           .single()
 
         // Send success message to customer
-        await sendConfirmationSuccessMessage(chatId, session.orderNumber)
+        await sendConfirmationSuccessMessage(chatId, session.order_number)
 
         // Edit the original message to remove buttons
         await bot.editMessageReplyMarkup(
@@ -85,29 +93,51 @@ export async function POST(request: NextRequest) {
           text: '✅ Commande confirmée avec succès !',
         })
 
-        // Send notification to admin (you need to configure ADMIN_CHAT_ID in your env)
+        // Send notification to admin
         const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
         if (adminChatId) {
           await sendAdminNotification(
             adminChatId,
             orderId,
-            session.orderNumber,
+            session.order_number,
             orderData?.customer_name || 'N/A',
-            session.totalAmount
+            session.total_amount
           )
         }
 
-        // Clean up session
-        confirmationSessions.delete(orderId)
+        // Clean up session from database
+        await supabase
+          .from('confirmation_sessions')
+          .delete()
+          .eq('order_id', orderId)
       }
 
       // Cancel order
       else if (data.startsWith('cancel_order_')) {
         const orderId = data.replace('cancel_order_', '')
 
-        // Check if session exists
-        const session = confirmationSessions.get(orderId)
-        if (!session) {
+        // Check if session exists in database
+        const { data: session, error: sessionError } = await supabase
+          .from('confirmation_sessions')
+          .select('*')
+          .eq('order_id', orderId)
+          .single()
+
+        if (!session || sessionError) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '⚠️ Cette demande a expiré.',
+            show_alert: true
+          })
+          return NextResponse.json({ ok: true })
+        }
+
+        // Check if session is expired
+        if (new Date(session.expires_at) < new Date()) {
+          await supabase
+            .from('confirmation_sessions')
+            .delete()
+            .eq('order_id', orderId)
+
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: '⚠️ Cette demande a expiré.',
             show_alert: true
@@ -116,7 +146,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Update order status to cancelled
-        const supabase = await createClient()
         const { error } = await supabase
           .from('orders')
           .update({
@@ -135,7 +164,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Send cancellation message
-        await bot.sendMessage(chatId, `❌ Commande \`${session.orderNumber}\` annulée.`, {
+        await bot.sendMessage(chatId, `❌ Commande \`${session.order_number}\` annulée.`, {
           parse_mode: 'Markdown'
         })
 
@@ -149,8 +178,11 @@ export async function POST(request: NextRequest) {
           text: 'Commande annulée.',
         })
 
-        // Clean up session
-        confirmationSessions.delete(orderId)
+        // Clean up session from database
+        await supabase
+          .from('confirmation_sessions')
+          .delete()
+          .eq('order_id', orderId)
       }
     }
 
@@ -163,4 +195,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

@@ -1,14 +1,32 @@
 import TelegramBot from 'node-telegram-bot-api'
+import {createClient} from "@/lib/supabase/client";
 
 // Store active confirmation sessions
 // In production, use Redis or a database instead
-export const confirmationSessions = new Map<string, {
-  orderId: string
-  userId: string
-  orderNumber: string
-  totalAmount: number
-  expiresAt: Date
-}>()
+
+export async function createConfirmationSession(
+  orderId: string,
+  orderNumber: string,
+  totalAmount: number,
+  chatId: string
+) {
+  const supabase = await createClient()
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+  const { error } = await supabase.from('confirmation_sessions').insert({
+    order_id: orderId,
+    order_number: orderNumber,
+    total_amount: totalAmount,
+    chat_id: chatId,
+    expires_at: expiresAt.toISOString()
+  })
+
+  if (error) throw error
+}
+
+
+
+
 
 // Initialize the bot
 let bot: TelegramBot | null = null
