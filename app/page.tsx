@@ -19,7 +19,6 @@ export default async function Home() {
             <div className="flex">
                 <main className="flex-1">
                     <HeroSection />
-                    <CategoriesSection categories={categories || []} />
                     <NewArrivals/>
                     <BrandsSection brands={brands} />
                     <FeaturesSection />
