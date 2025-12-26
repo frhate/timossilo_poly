@@ -1,82 +1,127 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { type Product } from "@/lib/types/admin"
-import { Trash2, ImageIcon } from "lucide-react"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+          import { TableCell, TableRow } from "@/components/ui/table"
+          import { Button } from "@/components/ui/button"
+          import { Input } from "@/components/ui/input"
+          import { Trash2, Check, X, Edit } from "lucide-react"
+          import { type Product } from "@/lib/types/admin"
+          import { useState } from "react"
+          import Image from "next/image"
 
-interface ProductRowProps {
-  product: Product
-  onDelete: (id: string) => Promise<void>
-}
+          interface ProductRowProps {
+            product: Product
+            onDelete: (id: string) => Promise<void>
+            onUpdateStock: (id: string, newStock: number) => Promise<void>
+          }
 
-export function ProductRow({ product, onDelete }: ProductRowProps) {
-  return (
-    <tr className="border-b hover:bg-muted/50 transition-colors">
-      <td className="p-3">
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="h-16 w-16 object-cover rounded-md"
-          />
-        ) : (
-          <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center">
-            <ImageIcon className="h-8 w-8 text-muted-foreground" />
-          </div>
-        )}
-      </td>
-      <td className="p-3">
-        <p className="font-semibold">{product.name}</p>
-        <p className="text-sm text-muted-foreground">{product.name}</p>
-      </td>
-      <td className="p-3 font-medium">{product.price.toLocaleString('ar-DZ')} دج</td>
-      <td className="p-3">
-        <Badge variant={product.stock > 10 ? "default" : product.stock > 0 ? "secondary" : "destructive"}>
-          {product.stock > 0 ? `${product.stock} قطعة` : "نفذ المخزون"}
-        </Badge>
-      </td>
-      <td className="p-3 text-sm text-muted-foreground">
-        {product.categories?.name || "—"}
-      </td>
-      <td className="p-3">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-              <AlertDialogDescription>
-                سيتم حذف المنتج "{product.name}" بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>إلغاء</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onDelete(product.id)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                حذف
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </td>
-    </tr>
-  )
-}
+          export function ProductRow({ product, onDelete, onUpdateStock }: ProductRowProps) {
+            const [isEditing, setIsEditing] = useState(false)
+            const [editedStock, setEditedStock] = useState(product.stock.toString())
+            const [isLoading, setIsLoading] = useState(false)
 
+            const handleSave = async () => {
+              const newStock = parseInt(editedStock)
+              if (isNaN(newStock) || newStock < 0) return
+
+              setIsLoading(true)
+              try {
+                await onUpdateStock(product.id, newStock)
+                setIsEditing(false)
+              } finally {
+                setIsLoading(false)
+              }
+            }
+
+            const handleCancel = () => {
+              setEditedStock(product.stock.toString())
+              setIsEditing(false)
+            }
+
+            const handleDelete = async () => {
+              if (confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) {
+                setIsLoading(true)
+                try {
+                  await onDelete(product.id)
+                } finally {
+                  setIsLoading(false)
+                }
+              }
+            }
+
+            return (
+              <TableRow>
+                <TableCell className="text-right">
+                  <div className="relative w-12 h-12 mr-2 inline-block">
+                    <Image
+                      src={product.image_url || "/placeholder.png"}
+                      alt={product.name}
+                      fill
+                      className="object-cover rounded"
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-medium">{product.name}</TableCell>
+                <TableCell className="text-right">{product.price.toLocaleString()} DZD</TableCell>
+                <TableCell className="text-right">
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editedStock}
+                      onChange={(e) => setEditedStock(e.target.value)}
+                      className="w-20 text-right"
+                      disabled={isLoading}
+                    />
+                  ) : (
+                    product.stock
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {product.categories?.name || "N/A"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    {isEditing ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleSave}
+                          disabled={isLoading}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancel}
+                          disabled={isLoading}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditing(true)}
+                          disabled={isLoading}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleDelete}
+                          disabled={isLoading}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          }

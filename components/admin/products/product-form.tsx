@@ -9,6 +9,7 @@ import {ImageUpload} from "./image-upload"
 import {type Product, type Category} from "@/lib/types/admin"
 import {useState} from "react"
 import {Loader2} from "lucide-react"
+import {Textarea} from "@/components/ui/textarea";
 
 interface ProductFormProps {
     categories: Category[]
@@ -21,6 +22,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
     const [stock, setStock] = useState("")
     const [categoryId, setCategoryId] = useState("")
     const [imageUrl, setImageUrl] = useState("")
+    const [description, setDescription] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState("")
 
@@ -42,6 +44,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                 stock: parseInt(stock),
                 category_id: categoryId,
                 image_url: imageUrl,
+                description: description.trim() || undefined,
             })
 
             // Reset form
@@ -50,6 +53,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
             setStock("")
             setCategoryId("")
             setImageUrl("")
+            setDescription("")
         } catch (error) {
             console.error("Error submitting product:", error)
             setError("Échec de l'ajout du produit")
@@ -105,6 +109,17 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                                 required
                             />
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Décrivez les caractéristiques du produit..."
+                            rows={4}
+                            className="resize-none"
+                        />
                     </div>
 
                     <div className="space-y-2">

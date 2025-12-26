@@ -1,11 +1,10 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { useState } from "react"
-import { validateImageFile } from "@/lib/image-utils"
-import { Upload, X, Loader2, CheckCircle2 } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Upload, X, Loader2 } from "lucide-react"
+import Image from "next/image"
+import { useState, useRef } from "react"
 
 interface ImageUploadProps {
   onImageUploaded: (url: string) => void
@@ -13,127 +12,123 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadProps) {
-  const [imagePreview, setImagePreview] = useState<string>(currentImageUrl || "")
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      setError(validation.error || "Invalid file")
+    // Validate file type
+    if (!['image/png', 'image/jpg', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      alert('Format de fichier non supporté. Utilisez PNG, JPG, JPEG ou WEBP.')
       return
     }
 
-    setError("")
-    setSuccess("")
-
-    // Show preview
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setImagePreview(event.target?.result as string)
+    // Validate file size (5MB)
+    if (file.size > 5000000) {
+      alert('Le fichier est trop volumineux. Taille maximale: 5MB')
+      return
     }
-    reader.readAsDataURL(file)
+
+    setIsUploading(true)
 
     try {
-      setUploading(true)
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append('file', file)
+      formData.append('upload_preset', 'ml_default')
+      formData.append('folder', 'products')
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      const data = await response.json()
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      )
 
       if (!response.ok) {
-        throw new Error(data.error || "Upload failed")
+        throw new Error('Échec du téléchargement')
       }
 
-      onImageUploaded(data.url)
-      setSuccess(`تم رفع الصورة بنجاح! تم الضغط بنسبة ${data.compressionRatio}%`)
-
-      setTimeout(() => setSuccess(""), 3000)
+      const data = await response.json()
+      onImageUploaded(data.secure_url)
     } catch (error) {
-      console.error("Upload error:", error)
-      setError(error instanceof Error ? error.message : "فشل رفع الصورة")
-      setImagePreview("")
+      console.error('Error uploading image:', error)
+      alert('Échec du téléchargement de l\'image')
     } finally {
-      setUploading(false)
+      setIsUploading(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
-  const clearImage = () => {
-    setImagePreview("")
+  const handleRemoveImage = () => {
     onImageUploaded("")
-    setError("")
-    setSuccess("")
+  }
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click()
   }
 
   return (
-    <div className="space-y-3">
-      <Label>صورة المنتج</Label>
+    <div className="space-y-2">
+      <Label>Image du produit</Label>
 
-      {!imagePreview ? (
-        <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 cursor-pointer transition-colors">
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            disabled={uploading}
-            className="hidden"
-            id="image-upload"
+      {currentImageUrl ? (
+        <div className="relative w-full max-w-md">
+          <Image
+            src={currentImageUrl}
+            alt="Product preview"
+            width={400}
+            height={300}
+            className="rounded-lg object-cover border"
           />
-          <label htmlFor="image-upload" className="cursor-pointer">
-            <div className="flex flex-col items-center gap-2">
-              {uploading ? (
-                <Loader2 className="h-10 w-10 text-primary animate-spin" />
-              ) : (
-                <Upload className="h-10 w-10 text-muted-foreground" />
-              )}
-              <p className="text-sm font-medium">
-                {uploading ? "جاري رفع الصورة..." : "انقر لرفع صورة"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                JPG, PNG, WebP, GIF (الحد الأقصى: 5MB)
-              </p>
-            </div>
-          </label>
-        </div>
-      ) : (
-        <div className="relative">
-          <img
-            src={imagePreview}
-            alt="Preview"
-            className="w-full h-48 object-cover rounded-lg"
-          />
-          <button
+          <Button
             type="button"
-            onClick={clearImage}
-            className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2"
+            onClick={handleRemoveImage}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
-      )}
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-          <CheckCircle2 className="h-4 w-4" />
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
+      ) : (
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpg,image/jpeg,image/webp"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleButtonClick}
+            disabled={isUploading}
+            className="w-full"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Téléchargement...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Télécharger l'image
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            PNG, JPG, JPEG ou WEBP (max. 5MB)
+          </p>
+        </div>
       )}
     </div>
   )
 }
-

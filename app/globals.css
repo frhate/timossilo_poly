@@ -115,6 +115,38 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Fix Cloudinary widget scroll blocking */
+#cloudinary-overlay {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    position: fixed !important;
+    max-height: 100vh !important;
+}
+
+.cloudinary-widget iframe {
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+}
+
+/* Allow scroll in Cloudinary widget container */
+body.cloudinary-open {
+    overflow: hidden !important;
+}
+
+#cloudinary-widget {
+    overflow-y: auto !important;
+}
+
+.cloudinary-thumbnails {
+    overflow-y: auto !important;
+    max-height: 400px !important;
+}
+
+iframe[id*="cloudinary"] {
+    overflow: auto !important;
+}
+
+
 @layer base {
     * {
         @apply border-border outline-ring/50;
