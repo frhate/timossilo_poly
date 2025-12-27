@@ -6,21 +6,22 @@ import {Label} from "@/components/ui/label"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {ImageUpload} from "./image-upload"
-import {type Product, type Category} from "@/lib/types/admin"
+import {type Product, type Category, Brands} from "@/lib/types/admin"
 import {useState} from "react"
 import {Loader2} from "lucide-react"
 import {Textarea} from "@/components/ui/textarea"
 
 interface ProductFormProps {
     categories: Category[]
+    brands: Brands[]
     onSubmit: (product: Omit<Product, 'id' | 'created_at'>) => Promise<void>
 }
-
-export function ProductForm({categories, onSubmit}: ProductFormProps) {
+export function ProductForm({categories, brands, onSubmit}: ProductFormProps) {
     const [name, setName] = useState("")
     const [price, setPrice] = useState("")
     const [stock, setStock] = useState("")
     const [categoryId, setCategoryId] = useState("")
+    const [brandId, setBrandId] = useState("")
     const [imageUrls, setImageUrls] = useState<string[]>([])
     const [description, setDescription] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -43,6 +44,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                 price: parseFloat(price),
                 stock: parseInt(stock),
                 category_id: categoryId,
+                brand_id: brandId,
                 image_urls: imageUrls,
                 description: description.trim() || undefined,
             })
@@ -52,6 +54,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
             setPrice("")
             setStock("")
             setCategoryId("")
+            setBrandId("")
             setImageUrls([])
             setDescription("")
         } catch (error) {
@@ -72,7 +75,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="product-name">Nom (anglais)</Label>
+                            <Label htmlFor="product-name">Nom</Label>
                             <Input
                                 id="product-name"
                                 value={name}
@@ -123,20 +126,38 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="category">Catégorie</Label>
-                        <Select value={categoryId} onValueChange={setCategoryId} required>
-                            <SelectTrigger id="category">
-                                <SelectValue placeholder="Choisir une catégorie"/>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Catégorie</Label>
+                            <Select value={categoryId} onValueChange={setCategoryId} required>
+                                <SelectTrigger id="category">
+                                    <SelectValue placeholder="Choisir une catégorie"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="brand">Marque</Label>
+                            <Select value={brandId} onValueChange={setBrandId} required>
+                                <SelectTrigger id="brand">
+                                    <SelectValue placeholder="Choisir une marque"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {brands.map((brand) => (
+                                        <SelectItem key={brand.id} value={brand.id}>
+                                            {brand.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <ImageUpload onImagesUpdated={setImageUrls} currentImageUrls={imageUrls}/>

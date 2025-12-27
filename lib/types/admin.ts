@@ -12,15 +12,27 @@ export interface Product {
   name: string
   price: number
   stock: number
+  brand_id: string
   category_id: string
   image_urls: string[]
-  description?: string  // Add this line
+  description?: string
   created_at: string
   categories?: {
     name: string
   }
+  brands?: {
+    name: string
+  }
 }
 
+
+export interface Brands {
+  id: string
+  name: string
+  slug?: string
+  image_url?: string
+  created_at: string
+}
 export interface Order {
   id: string
   order_number: string

@@ -84,6 +84,9 @@ export function ProductRow({product, onDelete, onUpdateStock}: ProductRowProps) 
                 {product.categories?.name || "N/A"}
             </TableCell>
             <TableCell className="text-right">
+                {product.brands?.name || "N/A"}
+            </TableCell>
+            <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                     {isEditing ? (
                         <>
