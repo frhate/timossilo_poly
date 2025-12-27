@@ -14,7 +14,7 @@ interface Product {
     id: string
     name: string
     price: number
-    image_url?: string
+    image_urls: string []
     stock: number
 }
 
@@ -133,21 +133,21 @@ export default function ProductCard({product}: { product: Product }) {
             className="group h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl border-border/50">
             {/* Image Container */}
 <div className="relative aspect-square bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
-    {product.image_url ? (
-        <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
-            loading="lazy"
-        />
-    ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-            <Package className="w-16 h-16 mb-3 opacity-30" strokeWidth={1.5}/>
-            <span className="text-sm font-medium">Image non disponible</span>
-        </div>
-    )}
+{product.image_urls && product.image_urls.length > 0 ? (
+    <Image
+        src={product.image_urls[0]}
+        alt={product.name}
+        fill
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        className="object-cover transition-transform duration-500 group-hover:scale-110"
+        loading="lazy"
+    />
+) : (
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+        <Package className="w-16 h-16 mb-3 opacity-30" strokeWidth={1.5}/>
+        <span className="text-sm font-medium">Image non disponible</span>
+    </div>
+)}
 
                 {/* Stock Badge */}
                 <div className="absolute top-3 left-3">

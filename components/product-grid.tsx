@@ -6,7 +6,7 @@
       id: string
       name: string
       price: number
-      image_url?: string
+      image_urls: string []
       stock: number
     }
 
