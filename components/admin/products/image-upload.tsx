@@ -7,17 +7,27 @@ import Image from "next/image"
 import { useState, useRef } from "react"
 
 interface ImageUploadProps {
-  onImageUploaded: (url: string) => void
-  currentImageUrl?: string
+  onImagesUpdated: (urls: string[]) => void
+  currentImageUrls?: string[]
+  maxImages?: number
 }
 
-export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadProps) {
+export function ImageUpload({
+  onImagesUpdated,
+  currentImageUrls = [],
+  maxImages = 3
+}: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (currentImageUrls.length >= maxImages) {
+      alert(`Vous ne pouvez télécharger que ${maxImages} images maximum`)
+      return
+    }
 
     // Validate file type
     if (!['image/png', 'image/jpg', 'image/jpeg', 'image/webp'].includes(file.type)) {
@@ -52,7 +62,7 @@ export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadPro
       }
 
       const data = await response.json()
-      onImageUploaded(data.secure_url)
+      onImagesUpdated([...currentImageUrls, data.secure_url])
     } catch (error) {
       console.error('Error uploading image:', error)
       alert('Échec du téléchargement de l\'image')
@@ -65,8 +75,9 @@ export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadPro
     }
   }
 
-  const handleRemoveImage = () => {
-    onImageUploaded("")
+  const handleRemoveImage = (index: number) => {
+    const newUrls = currentImageUrls.filter((_, i) => i !== index)
+    onImagesUpdated(newUrls)
   }
 
   const handleButtonClick = () => {
@@ -75,28 +86,34 @@ export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadPro
 
   return (
     <div className="space-y-2">
-      <Label>Image du produit</Label>
+      <Label>Images du produit ({currentImageUrls.length}/{maxImages})</Label>
 
-      {currentImageUrl ? (
-        <div className="relative w-full max-w-md">
-          <Image
-            src={currentImageUrl}
-            alt="Product preview"
-            width={400}
-            height={300}
-            className="rounded-lg object-cover border"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute top-2 right-2"
-            onClick={handleRemoveImage}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+      {currentImageUrls.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          {currentImageUrls.map((url, index) => (
+            <div key={index} className="relative">
+              <Image
+                src={url}
+                alt={`Product image ${index + 1}`}
+                width={200}
+                height={150}
+                className="rounded-lg object-cover border w-full h-32"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6"
+                onClick={() => handleRemoveImage(index)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
         </div>
-      ) : (
+      )}
+
+      {currentImageUrls.length < maxImages && (
         <div>
           <input
             ref={fileInputRef}
@@ -120,7 +137,7 @@ export function ImageUpload({ onImageUploaded, currentImageUrl }: ImageUploadPro
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Télécharger l'image
+                Ajouter une image
               </>
             )}
           </Button>

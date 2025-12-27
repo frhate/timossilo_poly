@@ -13,7 +13,7 @@ export interface Product {
   price: number
   stock: number
   category_id: string
-  image_url?: string
+  image_urls: string[]
   description?: string  // Add this line
   created_at: string
   categories?: {

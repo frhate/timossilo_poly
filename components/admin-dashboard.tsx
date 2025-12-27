@@ -103,7 +103,7 @@ export default function AdminDashboard({
 
                     <div className="p-4 md:p-6">
                         <TabsContent value="products" className="mt-0">
-                            <AdminProducts initialProducts={initialProducts}/>
+                            <AdminProducts/>
                         </TabsContent>
 
                         <TabsContent value="categories" className="mt-0">

@@ -9,7 +9,7 @@ import {ImageUpload} from "./image-upload"
 import {type Product, type Category} from "@/lib/types/admin"
 import {useState} from "react"
 import {Loader2} from "lucide-react"
-import {Textarea} from "@/components/ui/textarea";
+import {Textarea} from "@/components/ui/textarea"
 
 interface ProductFormProps {
     categories: Category[]
@@ -21,7 +21,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
     const [price, setPrice] = useState("")
     const [stock, setStock] = useState("")
     const [categoryId, setCategoryId] = useState("")
-    const [imageUrl, setImageUrl] = useState("")
+    const [imageUrls, setImageUrls] = useState<string[]>([])
     const [description, setDescription] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState("")
@@ -29,8 +29,8 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!imageUrl) {
-            setError("Veuillez télécharger l'image du produit")
+        if (imageUrls.length === 0) {
+            setError("Veuillez télécharger au moins une image du produit")
             return
         }
 
@@ -43,7 +43,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                 price: parseFloat(price),
                 stock: parseInt(stock),
                 category_id: categoryId,
-                image_url: imageUrl,
+                image_urls: imageUrls,
                 description: description.trim() || undefined,
             })
 
@@ -52,7 +52,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
             setPrice("")
             setStock("")
             setCategoryId("")
-            setImageUrl("")
+            setImageUrls([])
             setDescription("")
         } catch (error) {
             console.error("Error submitting product:", error)
@@ -110,6 +110,7 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                             />
                         </div>
                     </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
                         <Textarea
@@ -138,13 +139,14 @@ export function ProductForm({categories, onSubmit}: ProductFormProps) {
                         </Select>
                     </div>
 
-                    <ImageUpload onImageUploaded={setImageUrl} currentImageUrl={imageUrl}/>
+                    <ImageUpload onImagesUpdated={setImageUrls} currentImageUrls={imageUrls}/>
 
                     {error && (
                         <p className="text-sm text-destructive">{error}</p>
                     )}
 
-                    <Button type="submit" disabled={isSubmitting || !imageUrl} className="w-full md:w-auto">
+                    <Button type="submit" disabled={isSubmitting || imageUrls.length === 0}
+                            className="w-full md:w-auto">
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                         Ajouter le produit
                     </Button>
