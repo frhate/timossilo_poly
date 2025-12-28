@@ -14,19 +14,9 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/logo.jpg",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/logo.jpg",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "icon-dark-32x32.png",
       },
     ],
-    apple: "/logo.jpg",
   },
 }
 

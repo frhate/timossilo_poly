@@ -125,3 +125,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+scripts/QUICK-FIX-RLS.sql
+scripts/fix-rls-infinite-recursion.sql
+scripts/add-telegram-fields.sql
