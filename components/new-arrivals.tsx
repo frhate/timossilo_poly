@@ -11,7 +11,7 @@ type Product = {
     id: string
     name: string
     price: number | string
-    image_url?: string | null
+    image_urls: string []
     brand?: string | null
     created_at?: string | null
 }
@@ -21,7 +21,7 @@ export default async function NewArrivals() {
         const supabase = await createClient()
         const {data, error} = await supabase
             .from("products")
-            .select("id, name, price, image_url, created_at, brands(name)")
+            .select("id, name, price, image_urls, created_at, brands(name)")
             .order("created_at", {ascending: false})
             .limit(4)
 
@@ -86,7 +86,7 @@ export default async function NewArrivals() {
                                         <div
                                             className="relative w-full rounded-lg overflow-hidden bg-muted/10 aspect-[4/3]">
                                             <Image
-                                                src={product.image_url ?? "/placeholder.jpg"}
+                                                src={product.image_urls?.[0] ?? "/placeholder.jpg"}
                                                 alt={product.name ?? "Produit"}
                                                 fill
                                                 className="object-cover group-hover:scale-105 transition-transform duration-300"

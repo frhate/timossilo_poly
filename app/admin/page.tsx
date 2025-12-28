@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import AdminDashboard from "@/components/admin-dashboard"
 import { redirect } from "next/navigation"
+import { isUserAdmin } from "@/lib/actions/auth"
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -12,9 +13,12 @@ export default async function AdminPage() {
     redirect("/auth/login")
   }
 
-  // Check if user is admin (you can add an is_admin field to user_profiles)
-  // For now, we'll allow access to anyone who's authenticated
-  // In production, implement proper role-based access control
+  // Check if user is admin (role = true in user_profiles table)
+  const isAdmin = await isUserAdmin()
+
+  if (!isAdmin) {
+    redirect("/")
+  }
 
   const { data: categories } = await supabase.from("categories").select("*").order("created_at", { ascending: false })
 

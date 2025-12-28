@@ -185,10 +185,6 @@ export default function AccountDashboard({
             </CardContent>
           </Card>
 
-          {/* Telegram Integration Card */}
-          <div className="mt-6">
-            <TelegramLinkCard />
-          </div>
         </div>
 
         {/* Orders Section */}

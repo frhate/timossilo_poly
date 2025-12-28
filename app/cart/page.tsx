@@ -14,7 +14,7 @@ export default async function CartPage() {
 
   const { data: cartItems } = await supabase
     .from("cart_items")
-    .select("*, products(id, name, price, image_url, stock)")
+    .select("*, products(id, name, price, image_urls, stock)")
     .eq("user_id", user.user.id)
 
   return (

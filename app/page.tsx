@@ -6,6 +6,7 @@ import BrandsSection from "@/components/brands-section"
 import FeaturesSection from "@/components/features-section"
 import NewArrivals from "@/components/new-arrivals";
 import { getBrands } from "@/lib/actions/brands"
+import PromotionSection from "@/components/promotion-section";
 
 export default async function Home() {
     const supabase = await createClient()
@@ -21,6 +22,7 @@ export default async function Home() {
                     <HeroSection />
                     <NewArrivals/>
                     <BrandsSection brands={brands} />
+                    <PromotionSection/>
                     <FeaturesSection />
                 </main>
             </div>

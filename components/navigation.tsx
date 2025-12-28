@@ -7,10 +7,12 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ShoppingCart, Menu, X, LogOut, User, Settings, LayoutGrid } from "lucide-react"
+import { isUserAdminClient } from "@/lib/actions/auth-client"
 
 export default function Navigation() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -20,6 +22,12 @@ export default function Navigation() {
       const { data } = await supabase.auth.getUser()
       setUser(data?.user)
       setIsLoading(false)
+
+      // Check if user is admin
+      if (data?.user) {
+        const adminStatus = await isUserAdminClient()
+        setIsAdmin(adminStatus)
+      }
     }
     getUser()
   }, [supabase])
@@ -75,7 +83,7 @@ export default function Navigation() {
                 Produits
               </Button>
             </Link>
-            {!isLoading && user && (
+            {!isLoading && user && isAdmin && (
               <Link href="/admin">
                 <Button
                   variant="ghost"
@@ -180,7 +188,7 @@ export default function Navigation() {
                 Produits
               </Button>
             </Link>
-            {!isLoading && user && (
+            {!isLoading && user && isAdmin && (
               <Link href="/admin" className="block">
                 <Button
                   variant="ghost"
