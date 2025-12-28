@@ -11,12 +11,50 @@ const montserrat = Montserrat({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
   description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timosilo",
-  icons: {
-    icon: [
+  keywords: ["téléphones", "smartphones", "ordinateurs", "appareils électroniques", "accessoires", "Algérie", "Timosilo"],
+  authors: [{ name: "Timosilo" }],
+  creator: "Timosilo",
+  publisher: "Timosilo",
+  metadataBase: new URL("https://timossilo-polymobile.com"), // Replace with your actual domain
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fr_DZ",
+    url: "https://timossilo-polymobile.com",
+    title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
+    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timosilo",
+    siteName: "Timosilo",
+    images: [
       {
-        url: "icon-dark-32x32.png",
+        url: "/og-image.jpg", // Add an Open Graph image (1200x630px recommended)
+        width: 1200,
+        height: 630,
+        alt: "Timosilo - Boutique Électronique",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
+    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie",
+    images: ["/og-image.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/icon-dark-32x32.png",
+    apple: "/apple-icon.png",
   },
 }
 
