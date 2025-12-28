@@ -128,3 +128,4 @@ dist
 scripts/QUICK-FIX-RLS.sql
 scripts/fix-rls-infinite-recursion.sql
 scripts/add-telegram-fields.sql
+*.sql
