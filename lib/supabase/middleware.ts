@@ -29,13 +29,26 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Allow guest access to public pages and shopping flows
+  const publicPaths = [
+    "/",
+    "/products",
+    "/cart",
+    "/checkout",
+    "/order-success",
+  ]
+
+  const isPublicPath = publicPaths.some(path =>
+    request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path + "/")
+  )
+
+  const isAuthPath = request.nextUrl.pathname.startsWith("/auth")
+
+  // Only redirect to login for protected routes (admin, account) when not authenticated
   if (
-    request.nextUrl.pathname !== "/" &&
-    request.nextUrl.pathname !== "/auth/login" &&
-    request.nextUrl.pathname !== "/auth/sign-up" &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/products")
+    !isPublicPath &&
+    !isAuthPath
   ) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"

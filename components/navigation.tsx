@@ -99,19 +99,20 @@ export default function Navigation() {
           <div className="hidden md:flex items-center gap-3">
             {!isLoading && (
               <>
+                {/* Cart - Always visible for both guest and authenticated users */}
+                <Link href="/cart">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground/70 hover:text-primary hover:bg-primary/8 transition-all duration-300"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="sr-only">Mon panier</span>
+                  </Button>
+                </Link>
+
                 {user ? (
                   <div className="flex items-center gap-3">
-                    <Link href="/cart">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-foreground/70 hover:text-primary hover:bg-primary/8 transition-all duration-300"
-                      >
-                        <ShoppingCart className="w-5 h-5" />
-                        <span className="sr-only">Mon panier</span>
-                      </Button>
-                    </Link>
-
                     <div className="w-px h-6 bg-border/50"></div>
 
                     <Link href="/account">
@@ -137,6 +138,8 @@ export default function Navigation() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
+                    <div className="w-px h-6 bg-border/50"></div>
+
                     <Link href="/auth/login">
                       <Button
                         variant="outline"
@@ -205,17 +208,21 @@ export default function Navigation() {
             {/* Mobile Auth Section */}
             {!isLoading && (
               <>
+                {/* Cart - Always visible for both guest and authenticated users */}
+                <Link href="/cart" className="block">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-foreground/80 hover:text-primary hover:bg-primary/8 font-medium transition-all duration-300 gap-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Mon Panier
+                  </Button>
+                </Link>
+
+                <div className="my-2 h-px bg-border/50"></div>
+
                 {user ? (
                   <div className="space-y-2">
-                    <Link href="/cart" className="block">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-foreground/80 hover:text-primary hover:bg-primary/8 font-medium transition-all duration-300 gap-2"
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                        Mon Panier
-                      </Button>
-                    </Link>
                     <Link href="/account" className="block">
                       <Button
                         variant="ghost"

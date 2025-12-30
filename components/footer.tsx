@@ -101,7 +101,7 @@ export default function Footer() {
                         <ul className="space-y-3">
                             <li className="flex items-start gap-2 text-sm text-muted-foreground">
                                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0"/>
-                                <span>info@timosilo.com</span>
+                                <span>info@Timossilo.com</span>
                             </li>
                             <li className="flex items-start gap-2 text-sm text-muted-foreground">
                                 <Phone className="w-4 h-4 mt-0.5 flex-shrink-0"/>
@@ -118,7 +118,7 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <div className="border-t mt-12 pt-8">
                     <p className="text-center text-sm text-muted-foreground">
-                        &copy; {new Date().getFullYear()} Timosilo. Tous droits réservés.
+                        &copy; {new Date().getFullYear()} Timossilo Polymobile . Tous droits réservés.
                     </p>
                 </div>
             </div>

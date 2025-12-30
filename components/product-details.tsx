@@ -10,6 +10,7 @@ import {Button} from "@/components/ui/button"
 import {Badge} from "@/components/ui/badge"
 import {ShoppingCart, Check, ChevronLeft, Package, Truck, Shield} from "lucide-react"
 import type {Session, AuthChangeEvent} from "@supabase/supabase-js"
+import {guestCart} from "@/lib/cart-storage"
 
 interface Product {
     id: string
@@ -49,26 +50,30 @@ export default function ProductDetails({product}: { product: Product }) {
         new Intl.NumberFormat("fr-DZ", {maximumFractionDigits: 0}).format(value) + " د.ج"
 
     const handleAddToCart = async () => {
-        if (!session?.user) {
-            router.push("/auth/login")
-            return
-        }
-
         if (product.stock === 0) return
 
         setIsAdding(true)
         try {
-            const {error} = await supabase.from("cart_items").upsert(
-                {
-                    user_id: session.user.id,
-                    product_id: product.id,
-                    quantity,
-                },
-                {
-                    onConflict: "user_id,product_id",
-                }
-            )
-            if (error) throw error
+            if (session?.user) {
+                // Authenticated user - add to database
+                const {error} = await supabase.from("cart_items").upsert(
+                    {
+                        user_id: session.user.id,
+                        product_id: product.id,
+                        quantity,
+                    },
+                    {
+                        onConflict: "user_id,product_id",
+                    }
+                )
+                if (error) throw error
+            } else {
+                // Guest user - add to localStorage
+                const existingItems = guestCart.getItems()
+                const existingItem = existingItems.find(item => item.productId === product.id)
+                const newQuantity = existingItem ? existingItem.quantity + quantity : quantity
+                guestCart.setItem(product.id, newQuantity)
+            }
 
             setIsAdded(true)
             setTimeout(() => setIsAdded(false), 1600)

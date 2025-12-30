@@ -4,10 +4,10 @@ import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {createClient} from "@/lib/supabase/client"
 import {useRouter} from "next/navigation"
-import {useState} from "react"
+import {useState, useEffect} from "react"
 import {Minus, Plus, Trash2, ShoppingBag, ArrowRight, Package} from "lucide-react"
 import Image from "next/image"
-import {cn} from "@/lib/utils"
+import {guestCart} from "@/lib/cart-storage"
 
 interface CartItem {
     id: string
@@ -22,11 +22,51 @@ interface CartItem {
     }
 }
 
-export default function CartContent({initialCartItems}: { initialCartItems: CartItem[] }) {
-    const [cartItems, setCartItems] = useState(initialCartItems)
+export default function CartContent({initialCartItems, isGuest}: { initialCartItems: CartItem[] | null, isGuest: boolean }) {
+    const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems || [])
     const [isLoading, setIsLoading] = useState<string | null>(null)
+    const [isLoadingCart, setIsLoadingCart] = useState(isGuest)
     const router = useRouter()
     const supabase = createClient()
+
+    // Load guest cart from localStorage
+    useEffect(() => {
+        if (isGuest) {
+            const loadGuestCart = async () => {
+                const guestCartItems = guestCart.getItems()
+
+                if (guestCartItems.length === 0) {
+                    setCartItems([])
+                    setIsLoadingCart(false)
+                    return
+                }
+
+                // Fetch product details for guest cart items
+                const productIds = guestCartItems.map(item => item.productId)
+                const { data: products } = await supabase
+                    .from("products")
+                    .select("id, name, price, image_urls, stock")
+                    .in("id", productIds)
+
+                if (products) {
+                    const fullCartItems = guestCartItems.map(item => {
+                        const product = products.find((p: any) => p.id === item.productId)
+                        return {
+                            id: item.productId, // Use productId as temporary cart item id for guest
+                            product_id: item.productId,
+                            quantity: item.quantity,
+                            products: product!
+                        }
+                    }).filter(item => item.products) // Filter out any products that weren't found
+
+                    setCartItems(fullCartItems)
+                }
+                setIsLoadingCart(false)
+            }
+
+            loadGuestCart()
+        }
+    }, [isGuest, supabase])
 
     const formatPrice = (value: number) =>
         new Intl.NumberFormat("fr-DZ", {
@@ -47,16 +87,24 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
 
         setIsLoading(cartItemId)
         try {
-            const {error} = await supabase
-                .from("cart_items")
+            if (isGuest) {
+                // Update guest cart in localStorage
+                guestCart.updateQuantity(cartItemId, newQuantity)
+                setCartItems(cartItems.map((item) =>
+                    item.product_id === cartItemId ? {...item, quantity: newQuantity} : item
+                ))
+            } else {
+                const {error} = await supabase
+                    .from("cart_items")
                 .update({quantity: newQuantity})
                 .eq("id", cartItemId)
 
-            if (error) throw error
+                if (error) throw error
 
-            setCartItems(cartItems.map((item) =>
-                item.id === cartItemId ? {...item, quantity: newQuantity} : item
-            ))
+                setCartItems(cartItems.map((item) =>
+                    item.id === cartItemId ? {...item, quantity: newQuantity} : item
+                ))
+            }
         } catch (error) {
             console.error("Erreur lors de la mise à jour:", error)
             alert("Une erreur s'est produite. Veuillez réessayer.")
@@ -68,14 +116,20 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
     const handleRemoveItem = async (cartItemId: string) => {
         setIsLoading(cartItemId)
         try {
-            const {error} = await supabase
-                .from("cart_items")
-                .delete()
-                .eq("id", cartItemId)
+            if (isGuest) {
+                // Remove from guest cart in localStorage
+                guestCart.removeItem(cartItemId)
+                setCartItems(cartItems.filter((item) => item.product_id !== cartItemId))
+            } else {
+                const {error} = await supabase
+                    .from("cart_items")
+                    .delete()
+                    .eq("id", cartItemId)
 
-            if (error) throw error
+                if (error) throw error
 
-            setCartItems(cartItems.filter((item) => item.id !== cartItemId))
+                setCartItems(cartItems.filter((item) => item.id !== cartItemId))
+            }
         } catch (error) {
             console.error("Erreur lors de la suppression:", error)
             alert("Une erreur s'est produite. Veuillez réessayer.")
@@ -86,6 +140,18 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
 
     const handleCheckout = () => {
         router.push("/checkout")
+    }
+
+    if (isLoadingCart) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="flex items-center justify-center">
+                        <p className="text-lg text-gray-600">Chargement...</p>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -180,8 +246,8 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
                                                         <div
                                                             className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
                                                             <Button
-                                                                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                                                                disabled={isLoading === item.id}
+                                                                onClick={() => handleUpdateQuantity(isGuest ? item.product_id : item.id, item.quantity - 1)}
+                                                                disabled={isLoading === (isGuest ? item.product_id : item.id)}
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-9 w-9 p-0 hover:bg-gray-100 rounded-none"
@@ -193,8 +259,8 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
                                           {item.quantity}
                                         </span>
                                                             <Button
-                                                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                                                                disabled={isLoading === item.id || item.quantity >= item.products.stock}
+                                                                onClick={() => handleUpdateQuantity(isGuest ? item.product_id : item.id, item.quantity + 1)}
+                                                                disabled={isLoading === (isGuest ? item.product_id : item.id) || item.quantity >= item.products.stock}
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-9 w-9 p-0 hover:bg-gray-100 rounded-none disabled:opacity-50"
@@ -213,8 +279,8 @@ export default function CartContent({initialCartItems}: { initialCartItems: Cart
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleRemoveItem(item.id)}
-                                                        disabled={isLoading === item.id}
+                                                        onClick={() => handleRemoveItem(isGuest ? item.product_id : item.id)}
+                                                        disabled={isLoading === (isGuest ? item.product_id : item.id)}
                                                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                                     >
                                                         <Trash2 className="w-4 h-4 mr-2"/>

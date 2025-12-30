@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { createOrderWithTelegramConfirmation, getUserTelegramChatId } from "@/lib/actions/orders"
+import { useState, useEffect } from "react"
+import { createOrderWithTelegramConfirmation, createGuestOrder, getUserTelegramChatId } from "@/lib/actions/orders"
+import { guestCart } from "@/lib/cart-storage"
+import Link from "next/link"
+
   interface CartItem {
     id: string
     product_id: string
@@ -33,14 +36,18 @@ import { createOrderWithTelegramConfirmation, getUserTelegramChatId } from "@/li
 
 
   export default function CheckoutForm({
-    cartItems,
+    initialCartItems,
     userProfile,
     userEmail,
+    isGuest,
   }: {
-    cartItems: CartItem[]
+    initialCartItems: CartItem[] | null
     userProfile: UserProfile | null
     userEmail: string
+    isGuest: boolean
   }) {
+    const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems || [])
+    const [email, setEmail] = useState(userEmail)
     const [fullName, setFullName] = useState(userProfile?.full_name || "")
     const [phone, setPhone] = useState(userProfile?.phone || "")
     const [address, setAddress] = useState(userProfile?.address || "")
@@ -48,8 +55,47 @@ import { createOrderWithTelegramConfirmation, getUserTelegramChatId } from "@/li
     const [zipCode, setZipCode] = useState(userProfile?.zip_code || "")
     const [notes, setNotes] = useState("")
     const [isProcessing, setIsProcessing] = useState(false)
+    const [isLoading, setIsLoading] = useState(isGuest)
     const router = useRouter()
     const supabase = createClient()
+
+    // Load guest cart from localStorage
+    useEffect(() => {
+      if (isGuest) {
+        const loadGuestCart = async () => {
+          const guestCartItems = guestCart.getItems()
+
+          if (guestCartItems.length === 0) {
+            router.push("/cart")
+            return
+          }
+
+          // Fetch product details for guest cart items
+          const productIds = guestCartItems.map(item => item.productId)
+          const { data: products } = await supabase
+            .from("products")
+            .select("id, name, price, stock")
+            .in("id", productIds)
+
+          if (products) {
+            const fullCartItems = guestCartItems.map(item => {
+              const product = products.find((p: any) => p.id === item.productId)
+              return {
+                id: item.productId, // Use productId as temporary cart item id for guest
+                product_id: item.productId,
+                quantity: item.quantity,
+                products: product!
+              }
+            }).filter(item => item.products) // Filter out any products that weren't found
+
+            setCartItems(fullCartItems)
+          }
+          setIsLoading(false)
+        }
+
+        loadGuestCart()
+      }
+    }, [isGuest, router, supabase])
 
     const total = cartItems.reduce((sum, item) => sum + item.products.price * item.quantity, 0)
 
@@ -58,70 +104,126 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
       setIsProcessing(true)
 
       try {
-        const { data: user } = await supabase.auth.getUser()
-        if (!user.user) throw new Error("Not authenticated")
-
         const orderNumber = `ORD-${Date.now()}`
 
-        // Get user's Telegram chat ID if exists
-        const telegramChatId = await getUserTelegramChatId(user.user.id)
+        if (isGuest) {
+          // Guest checkout
+          if (!email) {
+            throw new Error("Email is required for guest checkout")
+          }
 
-        // Create order with Telegram confirmation
-        const { orderId } = await createOrderWithTelegramConfirmation({
-          userId: user.user.id,
-          orderNumber,
-          totalAmount: total,
-          customerName: fullName,
-          customerPhone: phone,
-          customerAddress: address,
-          customerCity: city,
-          customerZip: zipCode || null,
-          notes: notes || null,
-          items: cartItems.map((item) => ({
-            productId: item.products.id,
-            quantity: item.quantity,
-            price: item.products.price,
-          })),
-          telegramChatId: telegramChatId || undefined,
-        })
+          // Create guest order
+          const { orderId } = await createGuestOrder({
+            guestEmail: email,
+            orderNumber,
+            totalAmount: total,
+            customerName: fullName,
+            customerPhone: phone,
+            customerAddress: address,
+            customerCity: city,
+            customerZip: zipCode || null,
+            notes: notes || null,
+            items: cartItems.map((item) => ({
+              productId: item.products.id,
+              quantity: item.quantity,
+              price: item.products.price,
+            })),
+          })
 
-        // Update or insert user profile
-        const profileData = {
-          id: user.user.id,
-          full_name: fullName,
-          phone,
-          address,
-          city,
-          zip_code: zipCode || null,
+          // Clear guest cart from localStorage
+          guestCart.clear()
+
+          router.push(`/order-success/${orderId}`)
+        } else {
+          // Authenticated user checkout
+          const { data: user } = await supabase.auth.getUser()
+          if (!user.user) throw new Error("Not authenticated")
+
+          // Get user's Telegram chat ID if exists
+          const telegramChatId = await getUserTelegramChatId(user.user.id)
+
+          // Create order with Telegram confirmation
+          const { orderId } = await createOrderWithTelegramConfirmation({
+            userId: user.user.id,
+            orderNumber,
+            totalAmount: total,
+            customerName: fullName,
+            customerPhone: phone,
+            customerAddress: address,
+            customerCity: city,
+            customerZip: zipCode || null,
+            notes: notes || null,
+            items: cartItems.map((item) => ({
+              productId: item.products.id,
+              quantity: item.quantity,
+              price: item.products.price,
+            })),
+            telegramChatId: telegramChatId || undefined,
+          })
+
+          // Update or insert user profile
+          const profileData = {
+            id: user.user.id,
+            full_name: fullName,
+            phone,
+            address,
+            city,
+            zip_code: zipCode || null,
+          }
+
+          const { error: profileError } = await supabase
+            .from("user_profiles")
+            .upsert(profileData, { onConflict: 'id' })
+
+          if (profileError) {
+            console.error("Profile update error:", profileError)
+            // Don't throw - profile update is not critical
+          }
+
+          // Clear cart
+          const { error: cartError } = await supabase
+            .from("cart_items")
+            .delete()
+            .eq("user_id", user.user.id)
+
+          if (cartError) {
+            console.error("Cart clear error:", cartError)
+            // Don't throw - cart clear is not critical
+          }
+
+          router.push(`/order-success/${orderId}`)
         }
-
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .upsert(profileData, { onConflict: 'id' })
-
-        if (profileError) {
-          console.error("Profile update error:", profileError)
-          // Don't throw - profile update is not critical
-        }
-
-        // Clear cart
-        const { error: cartError } = await supabase
-          .from("cart_items")
-          .delete()
-          .eq("user_id", user.user.id)
-
-        if (cartError) {
-          console.error("Cart clear error:", cartError)
-          // Don't throw - cart clear is not critical
-        }
-
-        router.push(`/order-success/${orderId}`)
       } catch (error) {
         console.error("Order submission failed:", error)
         alert(error instanceof Error ? error.message : "Une erreur est survenue. Veuillez réessayer.")
       } finally {
         setIsProcessing(false)
       }
+    }
+
+    if (isLoading) {
+      return (
+        <div className="container px-4 sm:px-6 py-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <p className="text-lg text-gray-600">Chargement...</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (cartItems.length === 0) {
+      return (
+        <div className="container px-4 sm:px-6 py-8 max-w-7xl mx-auto">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-lg text-gray-600 mb-4">Votre panier est vide</p>
+              <Button onClick={() => router.push("/products")}>
+                Continuer vos achats
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
     }
     return (
       <div className="container px-4 sm:px-6 py-4 sm:py-8 max-w-7xl mx-auto">
@@ -130,9 +232,36 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             <Card>
               <CardHeader className="px-4 sm:px-6">
                 <CardTitle className="text-lg sm:text-xl">Informations de Livraison</CardTitle>
+                {isGuest && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Commander en tant qu'invité. Vous pouvez{" "}
+                    <Link href="/auth/sign-up" className="text-primary hover:underline">
+                      créer un compte
+                    </Link>{" "}
+                    pour suivre vos commandes facilement.
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="px-4 sm:px-6">
                 <form onSubmit={handleSubmitOrder} className="space-y-4 sm:space-y-6">
+                  {isGuest && (
+                    <div>
+                      <Label htmlFor="email" className="text-sm sm:text-base">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="votre@email.com"
+                        className="mt-1.5 h-10 sm:h-11"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Nous vous enverrons la confirmation de commande à cet email
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="fullName" className="text-sm sm:text-base">Nom Complet *</Label>

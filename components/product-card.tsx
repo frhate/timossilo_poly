@@ -9,6 +9,7 @@ import {Card, CardContent} from "@/components/ui/card"
 import {Button} from "@/components/ui/button"
 import {ShoppingCart, Check, Eye, Package} from "lucide-react"
 import {cn} from "@/lib/utils"
+import {guestCart} from "@/lib/cart-storage"
 
 interface Product {
     id: string
@@ -21,7 +22,6 @@ interface Product {
 export default function ProductCard({product}: { product: Product }) {
     const [isAdding, setIsAdding] = useState(false)
     const [isAdded, setIsAdded] = useState(false)
-    const router = useRouter()
     const supabase = createClient()
 
     const formatPrice = (value: number) =>
@@ -32,30 +32,57 @@ export default function ProductCard({product}: { product: Product }) {
         }).format(value)
 
     const handleAddToCart = async () => {
-        const {data: user} = await supabase.auth.getUser()
-
-        if (!user.user) {
-            router.push("/auth/login")
-            return
-        }
-
         if (product.stock === 0) return
 
         setIsAdding(true)
         try {
-            // Vérifier si l'article existe déjà dans le panier
-            const {data: existingItem, error: fetchError} = await supabase
-                .from("cart_items")
-                .select("id, quantity")
-                .eq("user_id", user.user.id)
-                .eq("product_id", product.id)
-                .maybeSingle()
+            const {data: user} = await supabase.auth.getUser()
 
-            if (fetchError) throw fetchError
+            if (user.user) {
+                // Authenticated user - add to database
+                // Vérifier si l'article existe déjà dans le panier
+                const {data: existingItem, error: fetchError} = await supabase
+                    .from("cart_items")
+                    .select("id, quantity")
+                    .eq("user_id", user.user.id)
+                    .eq("product_id", product.id)
+                    .maybeSingle()
 
-            if (existingItem) {
-                // Mettre à jour la quantité si l'article existe
-                const newQuantity = existingItem.quantity + 1
+                if (fetchError) throw fetchError
+
+                if (existingItem) {
+                    // Mettre à jour la quantité si l'article existe
+                    const newQuantity = existingItem.quantity + 1
+
+                    // Vérifier que la nouvelle quantité ne dépasse pas le stock
+                    if (newQuantity > product.stock) {
+                        alert(`Stock insuffisant. Quantité maximale disponible: ${product.stock}`)
+                        return
+                    }
+
+                    const {error: updateError} = await supabase
+                        .from("cart_items")
+                        .update({quantity: newQuantity})
+                        .eq("id", existingItem.id)
+
+                    if (updateError) throw updateError
+                } else {
+                    // Insérer un nouvel article
+                    const {error: insertError} = await supabase
+                        .from("cart_items")
+                        .insert({
+                            user_id: user.user.id,
+                            product_id: product.id,
+                            quantity: 1,
+                        })
+
+                    if (insertError) throw insertError
+                }
+            } else {
+                // Guest user - add to localStorage
+                const existingItems = guestCart.getItems()
+                const existingItem = existingItems.find(item => item.productId === product.id)
+                const newQuantity = existingItem ? existingItem.quantity + 1 : 1
 
                 // Vérifier que la nouvelle quantité ne dépasse pas le stock
                 if (newQuantity > product.stock) {
@@ -63,23 +90,7 @@ export default function ProductCard({product}: { product: Product }) {
                     return
                 }
 
-                const {error: updateError} = await supabase
-                    .from("cart_items")
-                    .update({quantity: newQuantity})
-                    .eq("id", existingItem.id)
-
-                if (updateError) throw updateError
-            } else {
-                // Insérer un nouvel article
-                const {error: insertError} = await supabase
-                    .from("cart_items")
-                    .insert({
-                        user_id: user.user.id,
-                        product_id: product.id,
-                        quantity: 1,
-                    })
-
-                if (insertError) throw insertError
+                guestCart.setItem(product.id, newQuantity)
             }
 
             setIsAdded(true)
