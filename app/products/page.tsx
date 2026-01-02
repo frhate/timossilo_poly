@@ -52,7 +52,7 @@ export default async function ProductsPage({
     }
 
 
-    const {data: products, error} = await query.order("created_at", {ascending: false})
+    const {data: products, error} = await query.order("updated_at", {ascending: false})
     const {data: categories} = await supabase.from("categories").select("*")
 
     if (error) {

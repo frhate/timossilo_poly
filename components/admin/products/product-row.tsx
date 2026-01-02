@@ -76,7 +76,7 @@ export function ProductRow({product, onDelete, onUpdateStock, onUpdateProduct}: 
                 </div>
             </TableCell>
             <TableCell className="text-right font-medium">{product.name}</TableCell>
-<TableCell className="text-right">
+            <TableCell className="text-right">
                 {isEditing ? (
                     <Input
                         type="number"
@@ -90,7 +90,8 @@ export function ProductRow({product, onDelete, onUpdateStock, onUpdateProduct}: 
                 ) : (
                     `${product.price.toLocaleString()} DZD`
                 )}
-            </TableCell>            <TableCell className="text-right">
+            </TableCell>
+            <TableCell className="text-right">
                 {isEditing ? (
                     <Input
                         type="number"
