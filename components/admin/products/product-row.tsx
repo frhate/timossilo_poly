@@ -12,20 +12,29 @@ interface ProductRowProps {
     product: Product
     onDelete: (id: string) => Promise<void>
     onUpdateStock: (id: string, newStock: number) => Promise<void>
+    onUpdateProduct: (id: string, updates: Partial<Pick<Product, 'price' | 'description'>>) => Promise<void>
 }
 
-export function ProductRow({product, onDelete, onUpdateStock}: ProductRowProps) {
+export function ProductRow({product, onDelete, onUpdateStock, onUpdateProduct}: ProductRowProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editedStock, setEditedStock] = useState(product.stock.toString())
+    const [editedPrice, setEditedPrice] = useState(product.price.toString())
+    const [editedDescription, setEditedDescription] = useState(product.description || '')
     const [isLoading, setIsLoading] = useState(false)
 
     const handleSave = async () => {
         const newStock = parseInt(editedStock)
-        if (isNaN(newStock) || newStock < 0) return
+        const newPrice = parseFloat(editedPrice)
+
+        if (isNaN(newStock) || newStock < 0 || isNaN(newPrice) || newPrice < 0) return
 
         setIsLoading(true)
         try {
             await onUpdateStock(product.id, newStock)
+            await onUpdateProduct(product.id, {
+                price: newPrice,
+                description: editedDescription
+            })
             setIsEditing(false)
         } finally {
             setIsLoading(false)
@@ -34,6 +43,8 @@ export function ProductRow({product, onDelete, onUpdateStock}: ProductRowProps) 
 
     const handleCancel = () => {
         setEditedStock(product.stock.toString())
+        setEditedPrice(product.price.toString())
+        setEditedDescription(product.description || '')
         setIsEditing(false)
     }
 
@@ -65,8 +76,21 @@ export function ProductRow({product, onDelete, onUpdateStock}: ProductRowProps) 
                 </div>
             </TableCell>
             <TableCell className="text-right font-medium">{product.name}</TableCell>
-            <TableCell className="text-right">{product.price.toLocaleString()} DZD</TableCell>
-            <TableCell className="text-right">
+<TableCell className="text-right">
+                {isEditing ? (
+                    <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editedPrice}
+                        onChange={(e) => setEditedPrice(e.target.value)}
+                        className="w-24 text-right"
+                        disabled={isLoading}
+                    />
+                ) : (
+                    `${product.price.toLocaleString()} DZD`
+                )}
+            </TableCell>            <TableCell className="text-right">
                 {isEditing ? (
                     <Input
                         type="number"
@@ -85,6 +109,22 @@ export function ProductRow({product, onDelete, onUpdateStock}: ProductRowProps) 
             </TableCell>
             <TableCell className="text-right">
                 {product.brands?.name || "N/A"}
+            </TableCell>
+            <TableCell className="text-right">
+                {isEditing ? (
+                    <Input
+                        type="text"
+                        value={editedDescription}
+                        onChange={(e) => setEditedDescription(e.target.value)}
+                        className="w-full min-w-[200px]"
+                        disabled={isLoading}
+                        placeholder="Description du produit"
+                    />
+                ) : (
+                    <div className="max-w-[300px] truncate">
+                        {product.description || "Aucune description"}
+                    </div>
+                )}
             </TableCell>
             <TableCell className="text-right">
                 <div className="flex justify-end gap-2">

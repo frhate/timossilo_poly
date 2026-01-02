@@ -9,19 +9,21 @@ interface ProductTableProps {
     products: Product[]
     onDelete: (id: string) => Promise<void>
     onUpdateStock: (id: string, newStock: number) => Promise<void>
+    onUpdateProduct: (id: string, updates: Partial<Pick<Product, 'price' | 'description'>>) => Promise<void>
     currentPage: number
     totalPages: number
     onPageChange: (page: number) => void
 }
 
 export function ProductTable({
-                                 products,
-                                 onDelete,
-                                 onUpdateStock,
-                                 currentPage,
-                                 totalPages,
-                                 onPageChange
-                             }: ProductTableProps) {
+    products,
+    onDelete,
+    onUpdateStock,
+    onUpdateProduct,
+    currentPage,
+    totalPages,
+    onPageChange
+}: ProductTableProps) {
     return (
         <Card>
             <CardHeader>
@@ -30,16 +32,18 @@ export function ProductTable({
             <CardContent>
                 <div className="overflow-x-auto">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="text-right">Image</TableHead>
-                                <TableHead className="text-right">Nom</TableHead>
-                                <TableHead className="text-right">Prix</TableHead>
-                                <TableHead className="text-right">Stock</TableHead>
-                                <TableHead className="text-right">Catégorie</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
+<TableHeader>
+    <TableRow>
+        <TableHead className="text-right">Image</TableHead>
+        <TableHead className="text-right">Nom</TableHead>
+        <TableHead className="text-right">Prix</TableHead>
+        <TableHead className="text-right">Stock</TableHead>
+        <TableHead className="text-right">Catégorie</TableHead>
+        <TableHead className="text-right">Marque</TableHead>
+        <TableHead className="text-right">Description</TableHead>
+        <TableHead className="text-right">Actions</TableHead>
+    </TableRow>
+</TableHeader>
                         <TableBody>
                             {products.map((product) => (
                                 <ProductRow
@@ -47,6 +51,7 @@ export function ProductTable({
                                     product={product}
                                     onDelete={onDelete}
                                     onUpdateStock={onUpdateStock}
+                                    onUpdateProduct={onUpdateProduct}
                                 />
                             ))}
                         </TableBody>
