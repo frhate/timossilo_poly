@@ -194,16 +194,21 @@
           price: item.price
         })) || []
 
-        // Send Telegram notification using customer phone as chat ID
+        // Send Telegram notification to admin
         try {
-          await sendOrderNotification(orderData.customerPhone, {
-            orderNumber: orderData.orderNumber,
-            customerName: orderData.customerName,
-            customerAddress: orderData.customerAddress,
-            customerPhone: orderData.customerPhone,
-            items,
-            totalAmount: orderData.totalAmount
-          })
+          const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
+          if (adminChatId) {
+            await sendOrderNotification(adminChatId, {
+              orderNumber: orderData.orderNumber,
+              customerName: orderData.customerName,
+              customerAddress: orderData.customerAddress,
+              customerPhone: orderData.customerPhone,
+              items,
+              totalAmount: orderData.totalAmount
+            })
+          } else {
+            console.warn("TELEGRAM_ADMIN_CHAT_ID not configured, skipping notification")
+          }
         } catch (telegramError) {
           console.error("Failed to send Telegram message:", telegramError)
           // Don't fail the order if Telegram message fails
