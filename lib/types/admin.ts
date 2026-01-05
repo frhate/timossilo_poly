@@ -54,6 +54,8 @@ export interface Order {
     created_at: string
     customer_phone: string
     customer_address: string
+    customer_city: string
+    customer_zip: string
     order_items: OrderItem[]
 }
 

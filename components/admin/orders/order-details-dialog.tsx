@@ -30,6 +30,8 @@ export function OrderDetailsDialog({order, open, onOpenChange}: OrderDetailsDial
                         <h3 className="font-semibold mb-2">Informations client</h3>
                         <p className="text-sm"><span className="font-medium">Téléphone:</span> {order.customer_phone}</p>
                         <p className="text-sm"><span className="font-medium">Adresse:</span> {order.customer_address}</p>
+                        <p className="text-sm"><span className="font-medium">City:</span> {order.customer_city}</p>
+                        <p className="text-sm"><span className="font-medium">Zip:</span> {order.customer_zip}</p>
                     </div>
 
                     <div>

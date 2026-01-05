@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     siteName: "Timosilo",
     images: [
       {
-        url: "/og-image.jpg", // Add an Open Graph image (1200x630px recommended)
+        url: "https://timossilo-polymobile.com/logo.jpg", // Add an Open Graph image (1200x630px recommended)
         width: 1200,
         height: 630,
         alt: "Timosilo - Boutique Électronique",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
     description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie",
-    images: ["/og-image.jpg"],
+    images: ["/logo.jpg"],
   },
   robots: {
     index: true,
