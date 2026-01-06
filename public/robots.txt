@@ -17,7 +17,6 @@ Disallow: /*?*filter=
 # Allow specific crawlers full access
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 0
 
 User-agent: Bingbot
 Allow: /
