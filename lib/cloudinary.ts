@@ -1,19 +1,17 @@
-export function getProductImageUrl(url: string, options?: {
-  width?: number
-  quality?: 'auto' | number
-}): string {
-  const uploadIndex = url.indexOf('/upload/')
-  if (uploadIndex === -1) return url
+/**
+ * Server-based image storage helpers
+ * Images are stored at: /var/www/uploads/products/{productId}/{filename}
+ * Served via: https://timossilo-polymobile.com/uploads/products/{productId}/{filename}
+ */
 
-  const { width = 800, quality = 'auto' } = options || {}
-
-  const transformations = [
-    'f_auto',
-    `q_${quality}`,
-    `w_${width}`,
-    'c_scale',
-    'dpr_auto', // Auto device pixel ratio
-  ].join(',')
-
-  return url.slice(0, uploadIndex + 8) + transformations + '/' + url.slice(uploadIndex + 8)
+/**
+ * Get optimized image URL for display
+ * Images are pre-optimized to WebP format on the server
+ * @param url - The full image URL
+ * @returns Optimized image URL
+ */
+export function getProductImageUrl(url: string): string {
+  // Images are already optimized to WebP on server
+  // This function maintains API compatibility with previous version
+  return url
 }

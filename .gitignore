@@ -132,3 +132,7 @@ scripts/add-telegram-fields.sql
 scripts/add-telegram-fields.sql
 SQL_QUICK_FIX.md
 *.md
+nginx.conf.example
+scripts/migrate-cloudinary-to-server.sh
+scripts/setup-server-storage.sh
+.env.example

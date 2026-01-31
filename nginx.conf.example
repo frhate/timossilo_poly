@@ -1,0 +1,62 @@
+# Nginx Configuration for Server-Based Image Storage
+# Add this to your server block in your Nginx configuration
+
+# Location block for product images
+location /uploads/products/ {
+    # Serve files from the local filesystem
+    alias /var/www/uploads/products/;
+
+    # Enable caching for 30 days (images are immutable)
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+
+    # Set proper MIME types
+    types {
+        image/webp webp;
+        image/jpeg jpg jpeg;
+        image/png png;
+        image/gif gif;
+    }
+
+    # Enable gzip compression for images (though WebP already compressed)
+    gzip on;
+    gzip_types image/webp;
+
+    # Log access to images
+    access_log /var/log/nginx/product-images-access.log;
+    error_log /var/log/nginx/product-images-error.log;
+}
+
+# Optional: Redirect old Cloudinary URLs (if needed during migration)
+# location ~ ^/uploads/cloudinary/(.*)$ {
+#     return 301 /uploads/products/$1;
+# }
+
+# Example of full server configuration:
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name timossilo-polymobile.com;
+#
+#     ssl_certificate /etc/letsencrypt/live/timossilo-polymobile.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/timossilo-polymobile.com/privkey.pem;
+#
+#     # Your Next.js application
+#     location / {
+#         proxy_pass http://localhost:3000;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection "upgrade";
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+#
+#     # Product images (add this block)
+#     location /uploads/products/ {
+#         alias /var/www/uploads/products/;
+#         expires 30d;
+#         add_header Cache-Control "public, immutable";
+#     }
+# }

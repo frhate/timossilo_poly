@@ -1,3 +1,5 @@
+// Server storage configuration
+
 export const IMAGE_VALIDATION = {
   ALLOWED_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
@@ -26,19 +28,22 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   return { valid: true }
 }
 
+/**
+ * Get optimized image URL for server-based storage
+ * Server already serves images in WebP format (optimized)
+ * @param url - The server image URL
+ * @param width - Optional width for responsive images (query param)
+ * @returns Optimized image URL
+ */
 export function getOptimizedCloudinaryUrl(url: string, width?: number): string {
-  const uploadIndex = url.indexOf('/upload/')
-  if (uploadIndex === -1) return url
-
-  const transformations = [
-    'f_auto',
-    'q_auto',
-    width ? `w_${width}` : 'w_1000',
-    'c_scale',
-  ].join(',')
-
-  return url.slice(0, uploadIndex + 8) + transformations + '/' + url.slice(uploadIndex + 8)
+  // Server images are already optimized in WebP format
+  // Add width parameter for responsive loading if needed
+  if (width && !url.includes("?")) {
+    return `${url}?w=${width}`
+  }
+  return url
 }
+
 
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes"
@@ -48,7 +53,7 @@ export function formatFileSize(bytes: number): string {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
 }
 
-// Add image compression function
+// Add image compression function for client-side preview/optimization
 export async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

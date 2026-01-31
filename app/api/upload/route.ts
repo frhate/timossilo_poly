@@ -1,6 +1,11 @@
-import { put } from "@vercel/blob"
 import { type NextRequest, NextResponse } from "next/server"
 import sharp from "sharp"
+import { promises as fs } from "fs"
+import path from "path"
+
+// Configuration
+const BASE_UPLOAD_PATH = process.env.BASE_UPLOAD_PATH || "/var/www/uploads/products"
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://timossilo-polymobile.com/uploads/products"
 
 // Image validation and compression
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -13,9 +18,14 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File
+    const productId = formData.get("productId") as string
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    }
+
+    if (!productId) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
     }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -32,39 +42,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create product directory if it doesn't exist
+    const productDir = path.join(BASE_UPLOAD_PATH, productId)
+    await fs.mkdir(productDir, { recursive: true })
+
+    // Read and process image
     const buffer = await file.arrayBuffer()
-    const compressedBuffer = await sharp(buffer)
+    const originalSize = buffer.byteLength
+
+
+    // Optimize image to WebP (best compression)
+    const webpBuffer = await sharp(buffer)
       .resize(COMPRESSED_MAX_WIDTH, COMPRESSED_MAX_HEIGHT, {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .jpeg({ quality: QUALITY })
+      .webp({ quality: QUALITY })
       .toBuffer()
 
-    // Generate a unique filename
+    // Generate unique filename with timestamp
     const timestamp = Date.now()
-    const filename = `product-${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(/\.[^/.]+$/, "")
+    const filename = `${sanitizedName}-${timestamp}.webp`
+    const filepath = path.join(productDir, filename)
 
-    const blob = await put(filename, compressedBuffer, {
-      access: "public",
-      contentType: "image/jpeg",
-    })
+    // Write optimized image to disk
+    await fs.writeFile(filepath, webpBuffer)
 
     // Calculate compression ratio
-    const originalSize = file.size
-    const compressedSize = compressedBuffer.length
+    const compressedSize = webpBuffer.length
     const compressionRatio = Math.round(((originalSize - compressedSize) / originalSize) * 100)
 
+    // Generate public URL
+    const publicUrl = `${PUBLIC_BASE_URL}/${productId}/${filename}`
+
     return NextResponse.json({
-      url: blob.url,
-      filename: blob.pathname.split("/").pop(),
+      url: publicUrl,
+      filename,
       originalSize,
       compressedSize,
       compressionRatio,
-      type: "image/jpeg",
+      type: "image/webp",
+      productId,
     })
   } catch (error) {
-    console.error("[v0] Upload error:", error)
-    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 })
+    console.error("Upload error:", error)
+    return NextResponse.json(
+      { error: "Upload failed. Please try again." },
+      { status: 500 }
+    )
   }
 }

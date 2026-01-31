@@ -12,12 +12,14 @@ interface ImageUploadProps {
     onImagesUpdated: (urls: string[]) => void
     currentImageUrls?: string[]
     maxImages?: number
+    productId?: string // Product ID for organizing uploads
 }
 
 export function ImageUpload({
                                 onImagesUpdated,
                                 currentImageUrls = [],
-                                maxImages = 3
+                                maxImages = 3,
+                                productId
                             }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -47,23 +49,25 @@ export function ImageUpload({
 
             const formData = new FormData()
             formData.append('file', compressedBlob, file.name)
-            formData.append('upload_preset', 'ml_default')
-            formData.append('folder', 'products')
 
-            const response = await fetch(
-                `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-                {
-                    method: 'POST',
-                    body: formData,
-                }
-            )
+            // Use temporary ID if productId not provided
+            const uploadProductId = productId || `temp-${Date.now()}`
+            formData.append('productId', uploadProductId)
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
 
             if (!response.ok) {
-                throw new Error('Échec du téléchargement')
+                const errorData = await response.json()
+                const errorMessage = errorData.error || 'Échec du téléchargement'
+                alert(errorMessage)
+                return
             }
 
             const data = await response.json()
-            onImagesUpdated([...currentImageUrls, data.secure_url])
+            onImagesUpdated([...currentImageUrls, data.url])
         } catch (error) {
             console.error('Error uploading image:', error)
             alert('Échec du téléchargement de l\'image')
@@ -141,7 +145,7 @@ export function ImageUpload({
                         )}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-2">
-                        PNG, JPG, JPEG ou WEBP (max. 5MB)
+                        PNG, JPG, JPEG ou WEBP (max. 5MB) - Automatiquement optimisé en WebP
                     </p>
                 </div>
             )}
