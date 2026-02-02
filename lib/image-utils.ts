@@ -2,7 +2,7 @@
 
 export const IMAGE_VALIDATION = {
   ALLOWED_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 8 * 1024 * 1024, // 5MB
   DISPLAY_MAX_WIDTH: 300,
   // Add compression settings
   MAX_WIDTH: 1200,
