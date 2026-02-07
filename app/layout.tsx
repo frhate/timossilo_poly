@@ -9,12 +9,12 @@ import "./globals.css"
 const montserrat = Montserrat({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
-  description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timosilo",
-  keywords: ["téléphones", "smartphones", "ordinateurs", "appareils électroniques", "accessoires", "Algérie", "Timosilo"],
-  authors: [{ name: "Timosilo" }],
-  creator: "Timosilo",
-  publisher: "Timosilo",
+  title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
+  description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timossilo",
+  keywords: ["téléphones", "smartphones", "ordinateurs", "appareils électroniques", "accessoires", "Algérie", "Timossilo"],
+  authors: [{ name: "Timossilo" }],
+  creator: "Timossilo",
+  publisher: "Timossilo",
   metadataBase: new URL("https://timossilo-polymobile.com"), // Replace with your actual domain
   alternates: {
     canonical: "/",
@@ -23,21 +23,21 @@ export const metadata: Metadata = {
     type: "website",
     locale: "fr_DZ",
     url: "https://timossilo-polymobile.com",
-    title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
-    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timosilo",
-    siteName: "Timosilo",
+    title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
+    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timossilo",
+    siteName: "Timossilo",
     images: [
       {
         url: "https://timossilo-polymobile.com/logo.jpg", // Add an Open Graph image (1200x630px recommended)
         width: 1200,
         height: 630,
-        alt: "Timosilo - Boutique Électronique",
+        alt: "Timossilo - Boutique Électronique",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Timosilo - Boutique de Téléphones et Appareils Électroniques",
+    title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
     description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie",
     images: ["/logo.jpg"],
   },
