@@ -33,7 +33,7 @@ export default function HeroSection() {
                             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-tight">
                                 Découvrez la
                                 <span className="block bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                                    Technologie du Futur
+                                    Technologie du Future
                                 </span>
                             </h1>
                             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-xl">
