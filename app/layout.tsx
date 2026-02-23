@@ -1,4 +1,4 @@
-import type React from "react"
+import React, {Suspense} from "react"
 import type { Metadata } from "next"
 import { Montserrat } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -67,8 +67,10 @@ export default function RootLayout({
   return (
     <html lang="fr" dir="ltr">
       <body className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}>
-        <MetaPixel />
-        <div className="flex-1">{children}</div>
+      <Suspense fallback={null}>
+          <MetaPixel />
+      </Suspense>
+      <div className="flex-1">{children}</div>
         <Footer />
         <Toaster />
         <Analytics />
