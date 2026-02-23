@@ -1,21 +1,40 @@
 "use client"
 
 import Script from "next/script"
+import { usePathname, useSearchParams } from "next/navigation"
+import { useEffect } from "react"
+
+declare global {
+    interface Window {
+        fbq: any;
+    }
+}
 
 export default function MetaPixel() {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID
+    const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
-  if (!pixelId) {
-    return null
-  }
+    useEffect(() => {
+        if (!pixelId) return
 
-  return (
-    <>
-      <Script
-        id="meta-pixel"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+        // TypeScript now knows what window.fbq is
+        if (typeof window !== "undefined" && window.fbq) {
+            window.fbq("track", "PageView")
+        }
+    }, [pathname, searchParams, pixelId])
+
+    if (!pixelId) {
+        return null
+    }
+
+    return (
+        <>
+            <Script
+                id="meta-pixel"
+                strategy="afterInteractive"
+                dangerouslySetInnerHTML={{
+                    __html: `
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -27,18 +46,17 @@ export default function MetaPixel() {
             fbq('init', '${pixelId}');
             fbq('track', 'PageView');
           `,
-        }}
-      />
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
-    </>
-  )
+                }}
+            />
+            <noscript>
+                <img
+                    height="1"
+                    width="1"
+                    style={{ display: "none" }}
+                    src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
+                    alt=""
+                />
+            </noscript>
+        </>
+    )
 }
-
