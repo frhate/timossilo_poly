@@ -7,7 +7,8 @@ import { updateSession } from "@/lib/supabase/middleware"
             '/sitemap.xml',
             '/robots.txt',
             '/manifest.json',
-            '/api/telegram'
+            '/api/telegram',
+              '/blog'
           ]
 
           if (publicPaths.some(path => request.nextUrl.pathname.startsWith(path))) {

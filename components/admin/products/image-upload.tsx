@@ -18,7 +18,7 @@ interface ImageUploadProps {
 export function ImageUpload({
                                 onImagesUpdated,
                                 currentImageUrls = [],
-                                maxImages = 3,
+                                maxImages = 5,
                                 productId
                             }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false)

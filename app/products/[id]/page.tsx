@@ -1,19 +1,20 @@
-import {createClient} from "@/lib/supabase/server"
+// app/products/[id]/page.tsx
+import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import ProductDetails from "@/components/product-details"
-import {notFound} from "next/navigation"
+import RelatedProducts from "@/components/related-products"
+import { notFound } from "next/navigation"
 
-export default async function ProductDetailPage({
-                                                    params,
+export default async function ProductDetailPage({params,
                                                 }: {
     params: Promise<{ id: string }>
 }) {
     const supabase = await createClient()
-    const {id} = await params
+    const { id } = await params
 
-    const {data: product} = await supabase
+    const { data: product } = await supabase
         .from("products")
-        .select("*, categories(name, id)")
+        .select("*, categories(name, id), brands(id, name)")
         .eq("id", id)
         .single()
 
@@ -23,8 +24,16 @@ export default async function ProductDetailPage({
 
     return (
         <div>
-            <Navigation/>
-            <ProductDetails product={product}/>
+            <Navigation />
+            <ProductDetails product={product} />
+            <div className="container mx-auto px-4 max-w-7xl">
+                <RelatedProducts
+                    currentProductId={product.id}
+                    brandId={product.brand_id ?? null}
+                    brandName={product.brands?.name ?? null}
+                    categoryId={product.category_id}
+                />
+            </div>
         </div>
     )
 }

@@ -114,6 +114,7 @@ export default function ProductDetails({product}: { product: Product }) {
                                     src={product.image_urls[currentImageIndex] ?? "/placeholder.svg"}
                                     alt={`${product.name} - Image ${currentImageIndex + 1}`}
                                     fill
+                                    loading="eager"
                                     sizes="(max-width: 1024px) 100vw, 50vw"
                                     className="object-contain p-4 pointer-events-none"
                                     priority
@@ -208,16 +209,21 @@ export default function ProductDetails({product}: { product: Product }) {
 
                         {/* Description */}
                         {product.description && (
-                            <Card className="border-l-4 border-l-primary">
-                                <CardHeader>
-                                    <CardTitle className="text-lg">Description du produit</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1 h-5 bg-primary rounded-full"/>
+                                    <h3 className="text-base font-semibold text-foreground">Description du produit</h3>
+                                </div>
+                                <div
+                                    className="relative bg-gradient-to-br from-muted/40 to-muted/10 border border-border/60 rounded-2xl p-5 overflow-hidden">
+                                    {/* Decorative background accent */}
+                                    <div
+                                        className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"/>
+                                    <p className="relative text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                                         {product.description}
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </div>
                         )}
 
                         {/* Quantity & Add to Cart */}
