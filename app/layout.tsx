@@ -4,8 +4,8 @@ import { Montserrat } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
-import MetaPixel from "@/components/meta-pixel"
 import "./globals.css"
+import FacebookPixel from "@/components/FacebookPixel";
 
 const montserrat = Montserrat({ subsets: ["latin"] })
 
@@ -67,9 +67,7 @@ export default function RootLayout({
   return (
     <html lang="fr" dir="ltr">
       <body className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}>
-      <Suspense fallback={null}>
-          <MetaPixel />
-      </Suspense>
+          <FacebookPixel />
       <div className="flex-1">{children}</div>
         <Footer />
         <Toaster />
