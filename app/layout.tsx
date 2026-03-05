@@ -67,7 +67,9 @@ export default function RootLayout({
   return (
     <html lang="fr" dir="ltr">
       <body className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}>
+      <Suspense fallback={null}>
           <FacebookPixel />
+      </Suspense>
       <div className="flex-1">{children}</div>
         <Footer />
         <Toaster />
