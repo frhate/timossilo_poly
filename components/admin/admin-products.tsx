@@ -14,6 +14,7 @@ export default function AdminProducts() {
     const [categories, setCategories] = useState<Category[]>([])
     const [brands, setBrands] = useState<Brands[]>([])
     const [currentPage, setCurrentPage] = useState(1)
+    const [searchQuery, setSearchQuery] = useState("")
     const [isLoading, setIsLoading] = useState(true)
     const supabase = createClient()
     const {toast} = useToast()
@@ -49,10 +50,33 @@ export default function AdminProducts() {
         fetchData()
     }, [supabase, toast])
 
-    const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE)
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
     const endIndex = startIndex + ITEMS_PER_PAGE
     const currentProducts = products.slice(startIndex, endIndex)
+
+    // Filter products based on search query
+    const filteredProducts = products.filter(product => {
+        const searchLower = searchQuery.toLowerCase()
+        const productName = product.name?.toLowerCase() || ""
+        const categoryName = (product.categories as any)?.name?.toLowerCase() || ""
+        const brandName = (product.brands as any)?.name?.toLowerCase() || ""
+
+        return (
+            productName.includes(searchLower) ||
+            categoryName.includes(searchLower) ||
+            brandName.includes(searchLower)
+        )
+    })
+
+    const filteredTotalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+    const filteredStartIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const filteredEndIndex = filteredStartIndex + ITEMS_PER_PAGE
+    const filteredCurrentProducts = filteredProducts.slice(filteredStartIndex, filteredEndIndex)
+
+    // Reset to page 1 when search query changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchQuery])
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page)
@@ -188,13 +212,40 @@ export default function AdminProducts() {
     return (
         <div className="space-y-6">
             <ProductForm categories={categories} brands={brands} onSubmit={handleAddProduct}/>
+
+            {/* Search Bar */}
+            <div className="flex gap-2">
+                <input
+                    type="text"
+                    placeholder="Rechercher un produit par nom, catégorie ou marque..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                    <button
+                        onClick={() => setSearchQuery("")}
+                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition"
+                    >
+                        Effacer
+                    </button>
+                )}
+            </div>
+
+            {/* Search Results Info */}
+            {searchQuery && (
+                <div className="text-sm text-gray-600">
+                    {filteredProducts.length} produit(s) trouvé(s)
+                </div>
+            )}
+
             <ProductTable
-                products={currentProducts}
+                products={filteredCurrentProducts}
                 onDelete={handleDeleteProduct}
                 onUpdateStock={handleUpdateStock}
                 onUpdateProduct={handleUpdateProduct}
                 currentPage={currentPage}
-                totalPages={totalPages}
+                totalPages={filteredTotalPages}
                 onPageChange={handlePageChange}
             />
         </div>
