@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import CartContent from "@/components/cart-content"
+import { getCartMetadata } from "@/lib/seo/metadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = getCartMetadata();
 
 export default async function CartPage() {
   const supabase = await createClient()

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import CheckoutForm from "@/components/checkout-form"
+import { getCheckoutMetadata } from "@/lib/seo/metadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = getCheckoutMetadata();
 
 export default async function CheckoutPage() {
   const supabase = await createClient()

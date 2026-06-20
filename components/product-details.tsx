@@ -5,7 +5,7 @@ import Link from "next/link"
 import {useState, useEffect} from "react"
 import {useRouter} from "next/navigation"
 import {createClient} from "@/lib/supabase/client"
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {Card, CardContent} from "@/components/ui/card"
 import {Button} from "@/components/ui/button"
 import {Badge} from "@/components/ui/badge"
 import {ShoppingCart, Check, ChevronLeft, Package, Truck, Shield} from "lucide-react"
@@ -19,8 +19,11 @@ interface Product {
     price: number
     stock: number
     image_urls: string []
-    categories: { name: string; id: string }
+    categories: { name: string; id: string; slug?: string | null }
+    brands?: { name: string; slug?: string | null } | null
+    slug?: string | null
 }
+
 
 export default function ProductDetails({product}: { product: Product }) {
     const [quantity, setQuantity] = useState(1)

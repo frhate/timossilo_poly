@@ -12,12 +12,23 @@ import {createClient} from "@/lib/supabase/server"
         PaginationNext,
         PaginationPrevious,
     } from "@/components/ui/pagination"
+import { getProductsListingMetadata } from "@/lib/seo/metadata";
+import type { Metadata } from "next";
 
     interface SearchParams {
         category?: string
         search?: string
         brand?: string
         page?: string
+    }
+
+    export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+        const params = await searchParams;
+        return getProductsListingMetadata({
+            brand: params.brand,
+            category: params.category,
+            search: params.search,
+        });
     }
 
     const PRODUCTS_PER_PAGE = 12

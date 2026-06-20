@@ -1,17 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import HeroSection from "@/components/hero-section"
-import CategoriesSection from "@/components/categories-section"
 import BrandsSection from "@/components/brands-section"
 import FeaturesSection from "@/components/features-section"
 import NewArrivals from "@/components/new-arrivals";
 import { getBrands } from "@/lib/actions/brands"
 import PromotionSection from "@/components/promotion-section";
+import { getHomeMetadata } from "@/lib/seo/metadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = getHomeMetadata();
 
 export default async function Home() {
     const supabase = await createClient()
-
-    const { data: categories } = await supabase.from("categories").select("*").order("created_at", { ascending: false })
     const brands = await getBrands()
 
     return (
@@ -29,5 +30,3 @@ export default async function Home() {
         </div>
     )
 }
-
-

@@ -10,6 +10,7 @@ Disallow: /_next/
 Disallow: /private/
 Disallow: /checkout/
 Disallow: /account/
+Disallow: /account
 Disallow: /cart/
 Disallow: /*?*sort=
 Disallow: /*?*filter=

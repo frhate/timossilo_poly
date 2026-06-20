@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 import Navigation from "@/components/navigation"
 import AccountDashboard from "@/components/account-dashboard"
 import { redirect } from "next/navigation"
+import { getAccountMetadata } from "@/lib/seo/metadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = getAccountMetadata();
 
 export default async function AccountPage() {
   const supabase = await createClient()

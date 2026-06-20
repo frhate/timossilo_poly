@@ -6,30 +6,27 @@ import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 import FacebookPixel from "@/components/FacebookPixel";
+import OrganizationSchema from "@/components/seo/organization-schema";
+import WebsiteSchema from "@/components/seo/website-schema";
 
 const montserrat = Montserrat({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
-  description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timossilo",
-  keywords: ["téléphones", "smartphones", "ordinateurs", "appareils électroniques", "accessoires", "Algérie", "Timossilo"],
-  authors: [{ name: "Timossilo" }],
-  creator: "Timossilo",
-  publisher: "Timossilo",
-  metadataBase: new URL("https://timossilo-polymobile.com"), // Replace with your actual domain
+  metadataBase: new URL("https://timossilo-polymobile.com"),
   alternates: {
     canonical: "/",
+    languages: {
+      "fr-dz": "/",
+    },
   },
   openGraph: {
     type: "website",
     locale: "fr_DZ",
     url: "https://timossilo-polymobile.com",
-    title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
-    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie - Timossilo",
-    siteName: "Timossilo",
+    siteName: "Timossilo Polymobile",
     images: [
       {
-        url: "https://timossilo-polymobile.com/logo.jpg", // Add an Open Graph image (1200x630px recommended)
+        url: "https://timossilo-polymobile.com/logo.jpg",
         width: 1200,
         height: 630,
         alt: "Timossilo - Boutique Électronique",
@@ -38,8 +35,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Timossilo - Boutique de Téléphones et Appareils Électroniques",
-    description: "La meilleure boutique pour téléphones, ordinateurs et accessoires en Algérie",
     images: ["/logo.jpg"],
   },
   robots: {
@@ -66,10 +61,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" dir="ltr">
+      <head>
+        <link rel="alternate" hrefLang="fr-dz" href="https://timossilo-polymobile.com/" />
+        <link rel="alternate" hrefLang="x-default" href="https://timossilo-polymobile.com/" />
+      </head>
       <body className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}>
       <Suspense fallback={null}>
           <FacebookPixel />
       </Suspense>
+      <OrganizationSchema />
+      <WebsiteSchema />
       <div className="flex-1">{children}</div>
         <Footer />
         <Toaster />
