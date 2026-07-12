@@ -1,145 +1,184 @@
-"use client"
+import Link from "next/link"
+import Image from "next/image"
+import { createClient } from "@/lib/supabase/server"
+import {
+    ArrowRight,
+    ShieldCheck,
+    Truck,
+    Headphones,
+    Star,
+    BadgeCheck,
+} from "lucide-react"
 
-import { ArrowRight, Zap, Shield, Truck } from "lucide-react"
-import { useEffect, useState } from "react"
+type FeaturedProduct = {
+    id: string
+    name: string
+    price: number
+    image_urls: string[] | null
+    brands?: { name: string } | null
+}
 
-export default function HeroSection() {
-    const [isLoaded, setIsLoaded] = useState(false)
+export default async function HeroSection() {
+    let featured: FeaturedProduct | null = null
+    try {
+        const supabase = await createClient()
+        const { data } = await supabase
+            .from("products")
+            .select("id, name, price, image_urls, brands(name)")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        featured = (data as FeaturedProduct | null) ?? null
+    } catch {
+        featured = null
+    }
 
-    useEffect(() => {
-        setIsLoaded(true)
-    }, [])
+    const formatPrice = (value: number) =>
+        new Intl.NumberFormat("fr-DZ", {
+            style: "currency",
+            currency: "DZD",
+            maximumFractionDigits: 0,
+        }).format(value)
+
+    const trust = [
+        { icon: ShieldCheck, label: "Produits authentiques" },
+        { icon: Truck, label: "Livraison en 24-48h" },
+        { icon: Headphones, label: "Support 24/7" },
+    ]
 
     return (
-        <div className="relative w-full overflow-hidden bg-background">
-            {/* Animated background elements */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl opacity-30 animate-pulse" />
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-accent/20 to-transparent rounded-full blur-3xl opacity-30 animate-pulse animation-delay-2000" />
+        <section className="relative overflow-hidden bg-background">
+            {/* Ambient background */}
+            <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute -top-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-primary/20 blur-3xl animate-blob" />
+                <div
+                    className="absolute -bottom-40 -left-24 h-[26rem] w-[26rem] rounded-full bg-accent/30 blur-3xl animate-blob"
+                    style={{ animationDelay: "4s" }}
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,theme(colors.primary/10),transparent)]" />
             </div>
 
-            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 md:py-40">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-                    {/* Left column - Text content */}
-                    <div className={`space-y-10 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
-                        {/* Badge */}
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full w-fit hover:bg-primary/15 transition-colors">
-                            <Zap className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-semibold text-primary">Nouvelles Technologiques</span>
-                        </div>
-
-                        {/* Headline */}
-                        <div className="space-y-6">
-                            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-tight">
-                                Découvrez la
-                                <span className="block bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                                    Technologie du Future
-                                </span>
-                            </h1>
-                            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-xl">
-                                Accédez à une large sélection de smartphones, ordinateurs et accessoires électroniques des meilleures marques mondiales. Qualité garantie et prix compétitifs.
-                            </p>
-                        </div>
-
-                        {/* CTA Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                            <a
-                                href="/products"
-                                className="group px-8 py-4 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground rounded-lg font-semibold hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 inline-flex items-center justify-center gap-2 whitespace-nowrap hover:scale-105"
-                            >
-                                Commencer à Magasiner
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </a>
-                            <a
-                                href="#categories"
-                                className="px-8 py-4 border-2 border-primary/30 bg-background text-foreground rounded-lg font-semibold hover:border-primary hover:bg-primary/5 transition-all duration-300 inline-flex items-center justify-center whitespace-nowrap"
-                            >
-                                Explorer Maintenant
-                            </a>
-                        </div>
-
-                        {/* Features Grid */}
-                        <div className="grid grid-cols-3 gap-6 pt-8 border-t border-border/50">
-                            <div className="group space-y-2 hover:translate-y-1 transition-transform">
-                                <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                                    <Shield className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <div className="text-2xl font-bold text-foreground">100%</div>
-                                    <p className="text-sm text-muted-foreground">Authentique</p>
-                                </div>
-                            </div>
-                            <div className="group space-y-2 hover:translate-y-1 transition-transform">
-                                <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                                    <Truck className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <div className="text-2xl font-bold text-foreground">Rapide</div>
-                                    <p className="text-sm text-muted-foreground">Livraison</p>
-                                </div>
-                            </div>
-                            <div className="group space-y-2 hover:translate-y-1 transition-transform">
-                                <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                                    <Zap className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <div className="text-2xl font-bold text-foreground">24/7</div>
-                                    <p className="text-sm text-muted-foreground">Support</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="flex gap-8 pt-4">
-                            <div>
-                                <div className="text-3xl font-bold text-primary">1000+</div>
-                                <p className="text-sm text-muted-foreground">Produits en stock</p>
-                            </div>
-                            <div>
-                                <div className="text-3xl font-bold text-primary">5000+</div>
-                                <p className="text-sm text-muted-foreground">Clients satisfaits</p>
-                            </div>
-                        </div>
+            <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-8 lg:py-28">
+                {/* Left: copy */}
+                <div className="animate-fade-in">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-semibold text-primary">
+                        <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                        </span>
+                        Nouveautés 2026
                     </div>
 
-                    {/* Right column - Visual representation */}
-                    <div className={`hidden lg:flex items-center justify-center transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'}`}>
-                        <div className="relative w-full max-w-md">
-                            {/* Animated gradient background */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10 rounded-3xl blur-3xl animate-pulse" />
+                    <h1 className="mt-6 text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                        La technologie qui{" "}
+                        <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent animate-gradient-x">
+                            vous ressemble
+                        </span>
+                    </h1>
 
-                            {/* Main card */}
-                            <div className="relative group">
-                                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-accent to-primary rounded-3xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
-                                <div className="relative aspect-square bg-gradient-to-br from-card to-card/50 rounded-3xl border border-primary/20 p-8 flex flex-col items-center justify-center backdrop-blur-sm overflow-hidden group-hover:border-primary/40 transition-colors duration-300">
-                                    {/* Decorative elements */}
-                                    <div className="absolute top-4 right-4 w-24 h-24 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-2xl" />
-                                    <div className="absolute bottom-4 left-4 w-32 h-32 bg-gradient-to-tr from-accent/20 to-transparent rounded-full blur-2xl" />
+                    <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                        Smartphones, ordinateurs et accessoires des plus grandes marques.
+                        Qualité garantie, prix compétitifs et livraison rapide dans toute l&apos;Algérie.
+                    </p>
 
-                                    {/* Content */}
-                                    <div className="relative text-center space-y-6">
-                                        {/* Icon with animation */}
-                                        <div className="inline-flex items-center justify-center">
-                                            <div className="relative w-40 h-40">
-                                                <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30 rounded-full blur-xl animate-pulse" />
-                                                <div className="absolute inset-6 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full animate-spin" style={{animationDuration: '3s'}} />
-                                                <div className="absolute inset-0 flex items-center justify-center rounded-full">
-                                                    <span className="text-7xl drop-shadow-lg">📱</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                        <Link
+                            href="/products"
+                            className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5"
+                        >
+                            Découvrir la boutique
+                            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        </Link>
+                        <Link
+                            href="#categories"
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card/60 px-7 py-3.5 text-base font-semibold text-foreground backdrop-blur transition-all hover:border-primary/40 hover:bg-primary/5"
+                        >
+                            Explorer les catégories
+                        </Link>
+                    </div>
 
-                                        {/* Text */}
-                                        <div>
-                                            <h3 className="text-2xl font-bold text-foreground mb-2">Dernier Modèle</h3>
-                                            <p className="text-sm text-muted-foreground">Technologie premium certifiée 100%</p>
-                                        </div>
+                    {/* Trust row */}
+                    <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
+                        {trust.map(({ icon: Icon, label }) => (
+                            <div key={label} className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                    <Icon className="h-4 w-4" />
+                                </span>
+                                <span className="text-sm font-medium text-foreground/80">{label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
-                                        {/* CTA Button */}
-                                        <button className="mt-4 px-6 py-3 bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105">
-                                            Voir les Détails
-                                        </button>
-                                    </div>
+                {/* Right: product showcase */}
+                <div className="relative animate-scale-in [animation-delay:150ms]">
+                    <div className="relative mx-auto max-w-md">
+                        {/* Glow */}
+                        <div className="absolute inset-0 -z-10 rounded-[2.5rem] bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10 blur-2xl" />
+
+                        {/* Device frame */}
+                        <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-6 shadow-2xl backdrop-blur-sm">
+                            <div className="absolute right-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow">
+                                <Star className="h-3.5 w-3.5 fill-current" />
+                                Top vente
+                            </div>
+
+                            <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-gradient-to-br from-muted/40 to-muted/10">
+                                {featured?.image_urls?.[0] ? (
+                                    <Image
+                                        src={featured.image_urls[0]}
+                                        alt={featured.name}
+                                        fill
+                                        priority
+                                        sizes="(max-width: 1024px) 100vw, 420px"
+                                        className="object-contain p-6"
+                                    />
+                                ) : (
+                                    <div className="flex h-full items-center justify-center text-7xl">📱</div>
+                                )}
+                            </div>
+
+                            <div className="mt-5">
+                                {featured?.brands?.name && (
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                                        {featured.brands.name}
+                                    </p>
+                                )}
+                                <h3 className="mt-1 line-clamp-1 text-lg font-bold text-foreground">
+                                    {featured?.name ?? "Produit en vedette"}
+                                </h3>
+                                {featured && (
+                                    <p className="mt-2 text-2xl font-extrabold text-foreground">
+                                        {formatPrice(featured.price)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Floating glass cards */}
+                        <div className="absolute -left-4 top-10 hidden animate-float rounded-2xl border border-border bg-card/80 p-3 shadow-xl backdrop-blur sm:block">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+                                    <BadgeCheck className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <p className="text-xs font-semibold text-foreground">Garantie 6 mois</p>
+                                    <p className="text-[11px] text-muted-foreground">Sur tous les produits</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            className="absolute -right-3 bottom-16 hidden animate-float-slow rounded-2xl border border-border bg-card/80 p-3 shadow-xl backdrop-blur sm:block"
+                            style={{ animationDelay: "2s" }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+                                    <Truck className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <p className="text-xs font-semibold text-foreground">Livraison 24-48h</p>
+                                    <p className="text-[11px] text-muted-foreground">Partout en Algérie</p>
                                 </div>
                             </div>
                         </div>
@@ -147,7 +186,12 @@ export default function HeroSection() {
                 </div>
             </div>
 
-        </div>
+            {/* Scroll indicator */}
+            <div className="pointer-events-none absolute bottom-6 left-1/2 hidden -translate-x-1/2 lg:block">
+                <div className="flex h-9 w-5 items-start justify-center rounded-full border border-border p-1">
+                    <span className="h-2 w-1 rounded-full bg-primary animate-scroll-indicator" />
+                </div>
+            </div>
+        </section>
     )
 }
-

@@ -81,17 +81,12 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/"
+                                <Link href="/refund-policy"
                                       className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                                    Politique de Confidentialité
+                                    Politique de Remboursement
                                 </Link>
                             </li>
-                            <li>
-                                <Link href="/"
-                                      className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                                    Conditions d'Utilisation
-                                </Link>
-                            </li>
+                           
                         </ul>
                     </div>
 

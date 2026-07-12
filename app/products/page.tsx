@@ -1,236 +1,226 @@
-import {createClient} from "@/lib/supabase/server"
-    import Navigation from "@/components/navigation"
-    import ProductGrid from "@/components/product-grid"
-    import SearchBar from "@/components/search-bar"
-    import CategoriesSidebar from "@/components/categories-sidebar"
-    import {Suspense} from "react"
-    import BrandSlider from "@/components/brand-slider"
-    import {Pagination,
-        PaginationContent,
-        PaginationItem,
-        PaginationLink,
-        PaginationNext,
-        PaginationPrevious,
-    } from "@/components/ui/pagination"
-import { getProductsListingMetadata } from "@/lib/seo/metadata";
-import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server"
+import Navigation from "@/components/navigation"
+import ProductGrid from "@/components/product-grid"
+import CategoriesSidebar from "@/components/categories-sidebar"
+import BrandSlider from "@/components/brand-slider"
+import ProductsToolbar from "@/components/products-toolbar"
+import Breadcrumb from "@/components/navigation/breadcrumb"
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination"
+import { getProductsListingMetadata } from "@/lib/seo/metadata"
+import type { Metadata } from "next"
+import { capitalize } from "@/lib/utils"
 
-    interface SearchParams {
-        category?: string
-        search?: string
-        brand?: string
-        page?: string
+interface SearchParams {
+    category?: string
+    search?: string
+    brand?: string
+    sort?: string
+    page?: string
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+    const params = await searchParams
+    return getProductsListingMetadata({
+        brand: params.brand,
+        category: params.category,
+        search: params.search,
+    })
+}
+
+const PRODUCTS_PER_PAGE = 12
+
+function getOrderBy(sort?: string): { column: string; ascending: boolean } {
+    switch (sort) {
+        case "price-asc":
+            return { column: "price", ascending: true }
+        case "price-desc":
+            return { column: "price", ascending: false }
+        case "name-asc":
+            return { column: "name", ascending: true }
+        default:
+            return { column: "updated_at", ascending: false }
+    }
+}
+
+export default async function ProductsPage({
+    searchParams,
+}: {
+    searchParams: Promise<SearchParams>
+}) {
+    const supabase = await createClient()
+    const params = await searchParams
+    const currentPage = Math.max(1, parseInt(params.page || "1"))
+    const { column, ascending } = getOrderBy(params.sort)
+
+    let query = supabase
+        .from("products")
+        .select("*, categories(name, slug)", { count: "exact" })
+
+    if (params.category) {
+        const { data: category } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("slug", params.category)
+            .single()
+
+        if (category) {
+            query = query.eq("category_id", category.id)
+        }
     }
 
-    export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
-        const params = await searchParams;
-        return getProductsListingMetadata({
-            brand: params.brand,
-            category: params.category,
-            search: params.search,
-        });
+    if (params.search) {
+        query = query.ilike("name", `%${params.search}%`)
     }
 
-    const PRODUCTS_PER_PAGE = 12
+    if (params.brand) {
+        const { data: brand } = await supabase
+            .from("brands")
+            .select("id")
+            .eq("slug", params.brand)
+            .single()
 
-    export default async function ProductsPage({
-        searchParams,
-    }: {
-        searchParams: Promise<SearchParams>
-    }) {
-        const supabase = await createClient()
-        const params = await searchParams
-        const currentPage = Math.max(1, parseInt(params.page || "1"))
-
-        let query = supabase
-            .from("products")
-            .select("*, categories(name, slug)", {count: "exact"})
-
-        if (params.category) {
-            const {data: category} = await supabase
-                .from("categories")
-                .select("id")
-                .eq("slug", params.category)
-                .single()
-
-            if (category) {
-                query = query.eq("category_id", category.id)
-            }
+        if (brand) {
+            query = query.eq("brand_id", brand.id)
         }
+    }
 
-        if (params.search) {
-            query = query.ilike("name", `%${params.search}%`)
-        }
+    const offset = (currentPage - 1) * PRODUCTS_PER_PAGE
+    const { data: brands } = await supabase.from("brands").select("*")
+    const { data: products, error, count } = await query
+        .order(column, { ascending })
+        .range(offset, offset + PRODUCTS_PER_PAGE - 1)
+    const { data: categories } = await supabase.from("categories").select("*")
 
-        if (params.brand) {
-            const {data: brand} = await supabase
-                .from("brands")
-                .select("id")
-                .eq("slug", params.brand)
-                .single()
+    if (error) {
+        console.error("Error fetching products:", error)
+    }
 
-            if (brand) {
-                query = query.eq("brand_id", brand.id)
-            }
-        }
+    const totalPages = Math.ceil((count || 0) / PRODUCTS_PER_PAGE)
 
-        const offset = (currentPage - 1) * PRODUCTS_PER_PAGE
-        const {data: brands} = await supabase.from("brands").select("*")
-        const {data: products, error, count} = await query
-            .order("updated_at", {ascending: false})
-            .range(offset, offset + PRODUCTS_PER_PAGE - 1)
-        const {data: categories} = await supabase.from("categories").select("*")
+    const buildPageUrl = (page: number) => {
+        const queryParams = new URLSearchParams()
+        if (params.category) queryParams.append("category", params.category)
+        if (params.search) queryParams.append("search", params.search)
+        if (params.brand) queryParams.append("brand", params.brand)
+        if (params.sort) queryParams.append("sort", params.sort)
+        queryParams.append("page", page.toString())
+        return `/products?${queryParams.toString()}`
+    }
 
-        if (error) {
-            console.error("Error fetching products:", error)
-        }
+    const title = params.brand
+        ? capitalize(params.brand)
+        : params.category
+            ? capitalize(params.category)
+            : params.search
+                ? `Résultats pour "${params.search}"`
+                : "Tous les produits"
 
-        const totalPages = Math.ceil((count || 0) / PRODUCTS_PER_PAGE)
+    const breadcrumbItems = [
+        ...(params.category
+            ? [{ label: "Catégories", href: "/products" }, { label: capitalize(params.category) }]
+            : params.brand
+                ? [{ label: "Marques", href: "/products" }, { label: capitalize(params.brand) }]
+                : [{ label: title }]),
+    ]
 
-        // Build query string for pagination links
-        const buildPageUrl = (page: number) => {
-            const queryParams = new URLSearchParams()
-            if (params.category) queryParams.append("category", params.category)
-            if (params.search) queryParams.append("search", params.search)
-            if (params.brand) queryParams.append("brand", params.brand)
-            queryParams.append("page", page.toString())
-            return `/products?${queryParams.toString()}`
-        }
+    return (
+        <div className="min-h-screen bg-background">
+            <Navigation />
 
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-                <Navigation/>
+            <main className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+                <Breadcrumb items={breadcrumbItems} />
 
-                <div className="flex w-full ">
-                    {/* Sidebar - renders for both mobile and desktop */}
-                    <CategoriesSidebar categories={categories || []}/>
-
-                    {/* Main Content */}
-                    <main className="flex-1 min-w-0">
-                        <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-[1600px]">
-                            {/* Header Section */}
-                            <div className="mb-4 sm:mb-6 lg:mb-8">
-                                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 leading-tight">
-                                    {params.brand ? (
-                                        <><span className="text-blue-600 block sm:inline">{params.brand}</span>
-                                            {" "}
-                                            <span className="text-gray-700">Smartphones</span>
-                                        </>
-                                    ) : params.category ? (
-                                        "Produits"
-                                    ) : (
-                                        "Tous les Produits"
-                                    )}
-                                </h1>
-                                {products && (
-                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                        <p className="text-sm sm:text-base text-gray-600 font-medium">
-                                            {count} produit{count !== 1 ? "s" : ""} trouvé{count !== 1 ? "s" : ""} ({currentPage} sur {totalPages})
-                                        </p>
-                                        {(params.category || params.brand || params.search) && (
-                                            <a
-                                                href="/products"
-                                                className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 underline font-medium"
-                                            >
-                                                Réinitialiser les filtres
-                                            </a>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Brand Slider */}
-                            {brands && brands.length > 0 && (
-                                <div className="mb-8 sm:mb-10">
-                                    <BrandSlider brands={brands} selectedBrand={params.brand} />
-                                </div>
-                            )}
-
-                            {/* Search Bar */}
-                            <div className="mb-6 sm:mb-8">
-                                <SearchBar/>
-                            </div>
-
-                            {/* Products Grid */}
-                            <Suspense fallback={
-                                <div className="flex justify-center items-center py-16 sm:py-20 lg:py-24">
-                                    <div className="flex flex-col items-center gap-3 sm:gap-4">
-                                        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
-                                        <p className="text-sm sm:text-base text-gray-600 animate-pulse">Chargement...</p>
-                                    </div>
-                                </div>
-                            }>
-                                {error ? (
-                                    <div className="text-center py-8 sm:py-12 mx-auto max-w-md">
-                                        <div className="bg-red-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-red-100">
-                                            <svg className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-red-500 mb-3 sm:mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                            </svg>
-                                            <p className="text-red-600 font-semibold mb-2 text-sm sm:text-base">Erreur lors du chargement</p>
-                                            <p className="text-xs sm:text-sm text-gray-600 break-words">{error.message}</p>
-                                        </div>
-                                    </div>
-                                ) : products && products.length > 0 ? (
-                                    <>
-                                        <ProductGrid products={products}/>
-
-                                        {/* Pagination */}
-                                        {totalPages > 1 && (
-                                            <div className="mt-8 sm:mt-10 lg:mt-12">
-                                                <Pagination>
-                                                    <PaginationContent>
-                                                        {currentPage > 1 && (
-                                                            <PaginationItem>
-                                                                <PaginationPrevious href={buildPageUrl(currentPage - 1)}/>
-                                                            </PaginationItem>
-                                                        )}
-
-                                                        {Array.from({length: totalPages}, (_, i) => i + 1).map((page) => {
-                                                            const isNearCurrent = Math.abs(page - currentPage) <= 1
-                                                            const isFirstOrLast = page === 1 || page === totalPages
-
-                                                            if (!isNearCurrent && !isFirstOrLast) return null
-
-                                                            return (
-                                                                <PaginationItem key={page}>
-                                                                    <PaginationLink
-                                                                        href={buildPageUrl(page)}
-                                                                        isActive={page === currentPage}
-                                                                    >
-                                                                        {page}
-                                                                    </PaginationLink>
-                                                                </PaginationItem>
-                                                            )
-                                                        })}
-
-                                                        {currentPage < totalPages && (
-                                                            <PaginationItem>
-                                                                <PaginationNext href={buildPageUrl(currentPage + 1)}/>
-                                                            </PaginationItem>
-                                                        )}
-                                                    </PaginationContent>
-                                                </Pagination>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="text-center py-12 sm:py-16 lg:py-20 mx-auto max-w-md px-4">
-                                        <div className="bg-white rounded-lg sm:rounded-xl p-6 sm:p-8 shadow-sm border border-gray-100">
-                                            <svg className="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mb-4 sm:mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                            </svg>
-                                            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Aucun produit trouvé</h3>
-                                            <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">Essayez d'ajuster vos filtres ou votre recherche</p>
-                                            <a href="/products" className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                                                Voir tous les produits
-                                            </a>
-                                        </div>
-                                    </div>
-                                )}
-                            </Suspense>
-                        </div>
-                    </main>
+                {/* Page header */}
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+                        {title}
+                    </h1>
+                    {params.brand && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Smartphones &amp; accessoires {capitalize(params.brand)}
+                        </p>
+                    )}
                 </div>
-            </div>
-        )
-    }
+
+                {/* Brand slider */}
+                {brands && brands.length > 0 && (
+                    <div className="mb-6 rounded-2xl border border-border bg-card/40 p-4 sm:p-6">
+                        <BrandSlider brands={brands} selectedBrand={params.brand} />
+                    </div>
+                )}
+
+                <div className="flex gap-6">
+                    {/* Sidebar (desktop) */}
+                    <CategoriesSidebar categories={categories || []} />
+
+                    {/* Main content */}
+                    <div className="min-w-0 flex-1">
+                        <ProductsToolbar resultCount={count || 0} />
+
+                        {error ? (
+                            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-12 text-center">
+                                <p className="font-semibold text-destructive">
+                                    Erreur lors du chargement
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground break-words">
+                                    {error.message}
+                                </p>
+                            </div>
+                        ) : products && products.length > 0 ? (
+                            <>
+                                <ProductGrid products={products} />
+
+                                {totalPages > 1 && (
+                                    <div className="mt-10">
+                                        <Pagination>
+                                            <PaginationContent>
+                                                {currentPage > 1 && (
+                                                    <PaginationItem>
+                                                        <PaginationPrevious href={buildPageUrl(currentPage - 1)} />
+                                                    </PaginationItem>
+                                                )}
+
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                                                    const isNearCurrent = Math.abs(page - currentPage) <= 1
+                                                    const isFirstOrLast = page === 1 || page === totalPages
+
+                                                    if (!isNearCurrent && !isFirstOrLast) return null
+
+                                                    return (
+                                                        <PaginationItem key={page}>
+                                                            <PaginationLink
+                                                                href={buildPageUrl(page)}
+                                                                isActive={page === currentPage}
+                                                            >
+                                                                {page}
+                                                            </PaginationLink>
+                                                        </PaginationItem>
+                                                    )
+                                                })}
+
+                                                {currentPage < totalPages && (
+                                                    <PaginationItem>
+                                                        <PaginationNext href={buildPageUrl(currentPage + 1)} />
+                                                    </PaginationItem>
+                                                )}
+                                            </PaginationContent>
+                                        </Pagination>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <ProductGrid products={[]} />
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    )
+}

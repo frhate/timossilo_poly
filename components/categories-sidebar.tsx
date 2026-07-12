@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import {usePathname} from "next/navigation"
-import {useState, useEffect} from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import {
     Smartphone,
     Laptop,
@@ -21,17 +21,20 @@ import {
     Battery,
     WifiIcon,
     LayoutGrid,
-    X,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Check,
     Receipt,
-    Target
+    Target,
 } from "lucide-react"
-import {cn} from "@/lib/utils"
-import {Button} from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
     Sheet,
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetDescription,
 } from "@/components/ui/sheet"
 
 interface Category {
@@ -86,195 +89,240 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
     reseau: WifiIcon,
 }
 
-// Get icon for category based on slug or name
 function getCategoryIcon(category: Category) {
     const slug = category.slug.toLowerCase()
     const name = category.name.toLowerCase()
 
-    // Try to match by slug first
     for (const [key, Icon] of Object.entries(categoryIcons)) {
         if (slug.includes(key) || name.includes(key)) {
             return Icon
         }
     }
 
-    // Default icon
     return LayoutGrid
 }
 
-// Shared navigation content component
-function CategoriesNav({categories, pathname, onItemClick}: {
-    categories: Category[],
-    pathname: string,
+/* ---------- Shared item renderers ---------- */
+
+function AllProductsItem({
+    isActive,
+    onItemClick,
+    collapsed = false,
+}: {
+    isActive: boolean
     onItemClick?: () => void
+    collapsed?: boolean
 }) {
-    return (
-        <nav className="space-y-1">
-            {/* All Products Link */}
+    if (collapsed) {
+        return (
             <Link
                 href="/products"
                 onClick={onItemClick}
+                title="Tous les produits"
                 className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                    "hover:bg-primary/10 hover:text-primary group",
-                    pathname === "/products" && !pathname.includes("category")
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground"
+                    "flex h-11 w-11 items-center justify-center rounded-xl transition-all group",
+                    isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                 )}
             >
-                <LayoutGrid className="w-4 h-4 flex-shrink-0"/>
-                <span className="truncate">Tous les produits</span>
+                <LayoutGrid className="h-5 w-5" />
             </Link>
+        )
+    }
 
-            {/* Category Links */}
-            {categories.map((category) => {
-                const Icon = getCategoryIcon(category)
-                const isActive = pathname.includes(`category=${category.slug}`)
-
-                return (
-                    <Link
-                        key={category.id}
-                        href={`/products?category=${category.slug}`}
-                        onClick={onItemClick}
-                        className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                            "hover:bg-primary/10 hover:text-primary group",
-                            isActive
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground"
-                        )}
-                    >
-                        <Icon className={cn(
-                            "w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110",
-                            isActive && "text-primary"
-                        )}/>
-                        <span className="truncate">{category.name}</span>
-                    </Link>
-                )
-            })}
-        </nav>
+    return (
+        <Link
+            href="/products"
+            onClick={onItemClick}
+            className={cn(
+                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+        >
+            <span
+                className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                    isActive
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted/60 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                )}
+            >
+                <LayoutGrid className="h-4 w-4" />
+            </span>
+            <span className="truncate">Tous les produits</span>
+            {isActive && <Check className="ml-auto h-4 w-4 text-primary" />}
+        </Link>
     )
 }
 
-export default function CategoriesSidebar({categories}: CategoriesSidebarProps) {
+function CategoryItem({
+    category,
+    isActive,
+    onItemClick,
+    collapsed = false,
+}: {
+    category: Category
+    isActive: boolean
+    onItemClick?: () => void
+    collapsed?: boolean
+}) {
+    const Icon = getCategoryIcon(category)
+
+    if (collapsed) {
+        return (
+            <Link
+                href={`/products?category=${category.slug}`}
+                onClick={onItemClick}
+                title={category.name}
+                className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-xl transition-all group",
+                    isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+            >
+                <Icon className="h-5 w-5" />
+            </Link>
+        )
+    }
+
+    return (
+        <Link
+            href={`/products?category=${category.slug}`}
+            onClick={onItemClick}
+            className={cn(
+                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+        >
+            <span
+                className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                    isActive
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted/60 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                )}
+            >
+                <Icon className="h-4 w-4" />
+            </span>
+            <span className="truncate">{category.name}</span>
+            {isActive && <Check className="ml-auto h-4 w-4 text-primary" />}
+        </Link>
+    )
+}
+
+/* ---------- Main component ---------- */
+
+export default function CategoriesSidebar({ categories }: CategoriesSidebarProps) {
     const pathname = usePathname()
+    const searchParams = useSearchParams()
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
 
-    // Listen for toggle event from navigation
-    useEffect(() => {
-        const handleToggle = () => {
-            setMobileOpen(prev => !prev)
-        }
+    const activeCategory = searchParams.get("category")
+    const activeBrand = searchParams.get("brand")
+    const isAllActive = pathname === "/products" && !activeCategory && !activeBrand
 
-        window.addEventListener('toggleMobileSidebar', handleToggle)
-        return () => window.removeEventListener('toggleMobileSidebar', handleToggle)
+    useEffect(() => {
+        const handleToggle = () => setMobileOpen((prev) => !prev)
+        window.addEventListener("toggleMobileSidebar", handleToggle)
+        return () => window.removeEventListener("toggleMobileSidebar", handleToggle)
     }, [])
 
     return (
         <>
             {/* Mobile Sheet */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                <SheetContent side="left" className="w-72 p-0">
-                    <SheetHeader className="p-6 pb-4">
+                <SheetContent side="left" className="flex w-[85%] max-w-sm flex-col p-0">
+                    <SheetHeader className="border-b border-border p-5">
                         <SheetTitle className="flex items-center gap-2 text-left">
-                            <LayoutGrid className="w-5 h-5 text-primary"/>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <LayoutGrid className="h-5 w-5" />
+                            </span>
                             Catégories
                         </SheetTitle>
-                        <p className="text-xs text-muted-foreground text-left">
-                            Parcourir par catégorie
-                        </p>
+                        <SheetDescription className="text-left">
+                            Filtrez notre catalogue par catégorie
+                        </SheetDescription>
                     </SheetHeader>
-                    <div className="px-6 pb-6 overflow-y-auto max-h-[calc(100vh-120px)]">
-                        <CategoriesNav
-                            categories={categories}
-                            pathname={pathname}
-                            onItemClick={() => setMobileOpen(false)}
-                        />
+
+                    <div className="flex-1 space-y-1 overflow-y-auto p-4">
+                        <AllProductsItem isActive={isAllActive} onItemClick={() => setMobileOpen(false)} />
+                        {categories.map((category) => (
+                            <CategoryItem
+                                key={category.id}
+                                category={category}
+                                isActive={activeCategory === category.slug}
+                                onItemClick={() => setMobileOpen(false)}
+                            />
+                        ))}
                     </div>
                 </SheetContent>
             </Sheet>
 
-            {/* Desktop Sidebar - Collapsible */}
+            {/* Desktop Sidebar - Collapsible card */}
             <aside
                 className={cn(
-                    "hidden lg:block border-r border-border bg-card/50 backdrop-blur-sm sticky top-0 h-screen overflow-y-auto transition-all duration-300",
-                    isCollapsed ? "w-20" : "w-64"
+                    "sticky top-24 z-20 hidden shrink-0 transition-all duration-300 lg:block",
+                    isCollapsed ? "w-20" : "w-72"
                 )}
             >
-                <div className="p-4">
-                    {/* Toggle Button */}
-                    <div className={cn("mb-6 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+                <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-sm">
+                    {/* Header */}
+                    <div
+                        className={cn(
+                            "mb-4 flex items-center",
+                            isCollapsed ? "justify-center" : "justify-between"
+                        )}
+                    >
                         {!isCollapsed && (
                             <div>
-                                <h2 className="text-lg font-bold text-foreground flex items-center gap-2 mb-1">
-                                    <LayoutGrid className="w-5 h-5 text-primary"/>
+                                <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
+                                    <LayoutGrid className="h-5 w-5 text-primary" />
                                     Catégories
                                 </h2>
-                                <p className="text-xs text-muted-foreground">
-                                    Parcourir par catégorie
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {categories.length} catégories
                                 </p>
                             </div>
                         )}
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="hover:bg-primary/10"
+                            onClick={() => setIsCollapsed((prev) => !prev)}
+                            className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                            aria-label={isCollapsed ? "Déplier" : "Réduire"}
                         >
                             {isCollapsed ? (
-                                <LayoutGrid className="w-5 h-5 text-primary"/>
+                                <PanelLeftOpen className="h-5 w-5" />
                             ) : (
-                                <X className="w-5 h-5"/>
+                                <PanelLeftClose className="h-5 w-5" />
                             )}
                         </Button>
                     </div>
 
                     {/* Navigation */}
-                    {isCollapsed ? (
-                        <nav className="space-y-2 flex flex-col items-center">
-                            {/* All Products Icon */}
-                            <Link
-                                href="/products"
-                                className={cn(
-                                    "flex items-center justify-center w-12 h-12 rounded-lg transition-all duration-200 group",
-                                    "hover:bg-primary/10 hover:text-primary",
-                                    pathname === "/products" && !pathname.includes("category")
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-muted-foreground"
-                                )}
-                                title="Tous les produits"
-                            >
-                                <LayoutGrid className="w-5 h-5 transition-transform group-hover:scale-110"/>
-                            </Link>
-
-                            {/* Category Icons */}
-                            {categories.map((category) => {
-                                const Icon = getCategoryIcon(category)
-                                const isActive = pathname.includes(`category=${category.slug}`)
-
-                                return (
-                                    <Link
-                                        key={category.id}
-                                        href={`/products?category=${category.slug}`}
-                                        className={cn(
-                                            "flex items-center justify-center w-12 h-12 rounded-lg transition-all duration-200 group",
-                                            "hover:bg-primary/10 hover:text-primary",
-                                            isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
-                                        )}
-                                        title={category.name}
-                                    >
-                                        <Icon className={cn(
-                                            "w-5 h-5 transition-transform group-hover:scale-110",
-                                            isActive && "text-primary"
-                                        )}/>
-                                    </Link>
-                                )
-                            })}
-                        </nav>
-                    ) : (
-                        <CategoriesNav categories={categories} pathname={pathname}/>
-                    )}
+                    <nav
+                        className={cn(
+                            "space-y-1",
+                            isCollapsed && "flex flex-col items-center"
+                        )}
+                    >
+                        <AllProductsItem isActive={isAllActive} collapsed={isCollapsed} />
+                        {categories.map((category) => (
+                            <CategoryItem
+                                key={category.id}
+                                category={category}
+                                isActive={activeCategory === category.slug}
+                                collapsed={isCollapsed}
+                            />
+                        ))}
+                    </nav>
                 </div>
             </aside>
         </>

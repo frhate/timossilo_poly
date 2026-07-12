@@ -36,13 +36,21 @@ export async function updateSession(request: NextRequest) {
     "/cart",
     "/checkout",
     "/order-success",
+    '/refund-policy',
+    "/blog",
+
   ]
 
+  const pathname = request.nextUrl.pathname
+  if (typeof pathname !== "string") {
+    return supabaseResponse
+  }
+
   const isPublicPath = publicPaths.some(path =>
-    request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path + "/")
+    pathname === path || pathname.startsWith(path + "/")
   )
 
-  const isAuthPath = request.nextUrl.pathname.startsWith("/auth")
+  const isAuthPath = pathname.startsWith("/auth")
 
   // Only redirect to login for protected routes (admin, account) when not authenticated
   if (

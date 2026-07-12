@@ -94,6 +94,7 @@ export default function Navigation() {
                                 Comparisons
                             </Button>
                         </Link>
+
                         {!isLoading && user && isAdmin && (
                             <Link href="/admin">
                                 <Button
@@ -213,6 +214,15 @@ export default function Navigation() {
                                 <GitCompare className="w-4 h-4 mr-2"/>
 
                                 Comparisons
+                            </Button>
+                        </Link>
+                        <Link href="/refund-policy" className="block">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-foreground/80 hover:text-primary hover:bg-primary/8 font-medium transition-all duration-300"
+                            >
+                                <Settings className="w-4 h-4 mr-2"/>
+                                Remboursement
                             </Button>
                         </Link>
                         {!isLoading && user && isAdmin && (

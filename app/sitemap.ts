@@ -41,6 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             changeFrequency: 'weekly',
             priority: 0.6,
         },
+        {
+            url: `${baseUrl}/refund-policy`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.7,
+        },
     ]
 
     // Dynamic product URLs - each product gets its own sitemap entry

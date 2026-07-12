@@ -77,8 +77,8 @@ export default function BrandSlider({ brands, selectedBrand }: BrandSliderProps)
                                 <div
                                     className={`relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all ${
                                         isSelected
-                                            ? 'border-blue-600 shadow-lg'
-                                            : 'border-gray-200 hover:border-blue-300 shadow-sm hover:shadow-md'
+                                            ? 'border-primary shadow-lg'
+                                            : 'border-border hover:border-primary/40 shadow-sm hover:shadow-md'
                                     }`}
                                 >
                                     {brand.image_url ? (
