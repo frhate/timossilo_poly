@@ -335,7 +335,7 @@ export default function CartContent({initialCartItems, isGuest}: { initialCartIt
                                         </p>
                                         <p className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            Livraison gratuite partout en Algérie
+                                            Livraison partout en Algérie
                                         </p>
                                         <p className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
