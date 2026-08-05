@@ -310,7 +310,7 @@ export default function CartContent({initialCartItems, isGuest}: { initialCartIt
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-600">Livraison</span>
-                                            <span className="font-semibold text-emerald-600">Gratuite</span>
+                                            <span className="font-semibold text-emerald-600">Selon l'emplacement</span>
                                         </div>
                                     </div>
 

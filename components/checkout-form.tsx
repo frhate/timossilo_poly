@@ -366,7 +366,7 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
                   </div>
                   <div className="flex justify-between">
                     <span>Livraison:</span>
-                    <span className="font-medium text-green-600">Gratuite</span>
+                    <span className="font-medium text-green-600">Selon l'emplacement</span>
                   </div>
                   <div className="flex justify-between font-bold text-base sm:text-lg border-t pt-2">
                     <span>Total:</span>
