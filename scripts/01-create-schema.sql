@@ -23,6 +23,15 @@ CREATE TABLE products (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create product views table for visitor analytics
+CREATE TABLE product_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  visitor_key TEXT,
+  viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create user profiles table
 CREATE TABLE user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -77,6 +86,7 @@ CREATE TABLE order_items (
 -- Enable Row Level Security
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -89,6 +99,10 @@ CREATE POLICY "Allow authenticated to view categories" ON categories FOR SELECT 
 -- Products policies (public read, admin write)
 CREATE POLICY "Allow public to view products" ON products FOR SELECT USING (true);
 CREATE POLICY "Allow authenticated to view products" ON products FOR SELECT USING (true);
+
+-- Product views policies (public insert, authenticated/admin read)
+CREATE POLICY "Allow public to record product views" ON product_views FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public to view product views" ON product_views FOR SELECT USING (true);
 
 -- User profiles policies
 CREATE POLICY "Allow users to view their own profile" ON user_profiles FOR SELECT USING (auth.uid() = id);
@@ -114,6 +128,8 @@ CREATE POLICY "Allow users to view order items" ON order_items FOR SELECT
 
 -- Create indexes for better performance
 CREATE INDEX idx_products_category_id ON products(category_id);
+CREATE INDEX idx_product_views_product_id ON product_views(product_id);
+CREATE INDEX idx_product_views_viewed_at ON product_views(viewed_at);
 CREATE INDEX idx_cart_items_user_id ON cart_items(user_id);
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);

@@ -23,6 +23,9 @@ export interface Product {
     brands?: {
         name: string
     }
+    visitor_count?: number
+    sold_count?: number
+    conversion_rate?: number
 }
 
 
@@ -45,6 +48,7 @@ export interface OrderItem {
         image_urls: string []
     }
 }
+
 
 export interface Order {
     id: string

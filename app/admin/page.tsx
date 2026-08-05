@@ -27,6 +27,21 @@ export default async function AdminPage() {
         .select("*, categories(name_ar)")
         .order("created_at", {ascending: false})
 
+    const {data: productViews} = await supabase
+        .from("product_views")
+        .select("product_id")
+
+    const visitorCountByProduct = new Map<string, number>()
+    productViews?.forEach((view) => {
+        if (!view.product_id) return
+        visitorCountByProduct.set(view.product_id, (visitorCountByProduct.get(view.product_id) || 0) + 1)
+    })
+
+    const productsWithInsights = (products || []).map((product) => ({
+        ...product,
+        visitor_count: visitorCountByProduct.get(product.id) || 0,
+    }))
+
     const {data: orders} = await supabase
         .from("orders")
         .select(`
@@ -48,7 +63,7 @@ export default async function AdminPage() {
             <Navigation/>
             <AdminDashboard
                 initialCategories={categories || []}
-                initialProducts={products || []}
+                initialProducts={productsWithInsights}
                 initialOrders={orders || []}
             />
         </div>

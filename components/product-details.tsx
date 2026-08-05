@@ -24,12 +24,15 @@ interface Product {
     slug?: string | null
 }
 
+const VISITOR_STORAGE_PREFIX = "timossilo_product_viewed_"
+
 
 export default function ProductDetails({product}: { product: Product }) {
     const [quantity, setQuantity] = useState(1)
     const [isAdding, setIsAdding] = useState(false)
     const [isAdded, setIsAdded] = useState(false)
     const [session, setSession] = useState<Session | null>(null)
+    const [visitorCount, setVisitorCount] = useState<number | null>(null)
     const router = useRouter()
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -48,6 +51,38 @@ export default function ProductDetails({product}: { product: Product }) {
 
         return () => subscription.unsubscribe()
     }, [])
+
+    useEffect(() => {
+        const trackView = async () => {
+            try {
+                const storageKey = `${VISITOR_STORAGE_PREFIX}${product.id}`
+                const alreadyTracked = typeof window !== "undefined" && window.localStorage.getItem(storageKey) === "1"
+
+                if (!alreadyTracked) {
+                    const { error } = await supabase.from("product_views").insert({
+                        product_id: product.id,
+                        user_id: session?.user?.id ?? null,
+                        visitor_key: typeof window !== "undefined" ? window.localStorage.getItem("visitor_key") || null : null,
+                    })
+
+                    if (!error && typeof window !== "undefined") {
+                        window.localStorage.setItem(storageKey, "1")
+                    }
+                }
+
+                const { count } = await supabase
+                    .from("product_views")
+                    .select("id", { count: "exact", head: true })
+                    .eq("product_id", product.id)
+
+                setVisitorCount(count ?? 0)
+            } catch (error) {
+                console.error("Error tracking product view:", error)
+            }
+        }
+
+        trackView()
+    }, [product.id, session?.user?.id, supabase])
 
     const formatPrice = (value: number) =>
         new Intl.NumberFormat("fr-DZ", {maximumFractionDigits: 0}).format(value) + " د.ج"
@@ -69,7 +104,9 @@ export default function ProductDetails({product}: { product: Product }) {
                         onConflict: "user_id,product_id",
                     }
                 )
-                if (error) throw error
+                if (error) {
+                    console.error(error)
+                }
             } else {
                 // Guest user - add to localStorage
                 const existingItems = guestCart.getItems()
@@ -92,7 +129,7 @@ export default function ProductDetails({product}: { product: Product }) {
     const canDecrease = quantity > 1
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="min-h-screen bg-linear-to-b from-background to-muted/20">
             <div className="container mx-auto px-4 py-6 max-w-7xl">
                 {/* Breadcrumb */}
                 <nav className="mb-8 flex items-center gap-2 text-sm">
@@ -112,7 +149,7 @@ export default function ProductDetails({product}: { product: Product }) {
                     <div className="space-y-4">
                         <Card className="overflow-hidden border-2 shadow-lg">
                             <div
-                                className="relative w-full aspect-square bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
+                                className="relative w-full aspect-square bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
                                 <Image
                                     src={product.image_urls[currentImageIndex] ?? "/placeholder.svg"}
                                     alt={`${product.name} - Image ${currentImageIndex + 1}`}
@@ -153,7 +190,7 @@ export default function ProductDetails({product}: { product: Product }) {
                                         <button
                                             key={idx}
                                             onClick={() => setCurrentImageIndex(idx)}
-                                            className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                                            className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                                                 idx === currentImageIndex ? "border-primary scale-105" : "border-transparent opacity-60 hover:opacity-100"
                                             }`}
                                         >
@@ -208,6 +245,12 @@ export default function ProductDetails({product}: { product: Product }) {
                                     {product.stock > 0 ? `${product.stock} en stock` : "Rupture de stock"}
                                 </Badge>
                             </div>
+                            <div className="mt-3 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-sm text-muted-foreground">
+                                <span className="font-semibold text-foreground">
+                                    {visitorCount === null ? "..." : visitorCount}
+                                </span>
+                                <span>visiteur(s) sur cette fiche</span>
+                            </div>
                         </div>
 
                         {/* Description */}
@@ -218,7 +261,7 @@ export default function ProductDetails({product}: { product: Product }) {
                                     <h3 className="text-base font-semibold text-foreground">Description du produit</h3>
                                 </div>
                                 <div
-                                    className="relative bg-gradient-to-br from-muted/40 to-muted/10 border border-border/60 rounded-2xl p-5 overflow-hidden">
+                                    className="relative bg-linear-to-br from-muted/40 to-muted/10 border border-border/60 rounded-2xl p-5 overflow-hidden">
                                     {/* Decorative background accent */}
                                     <div
                                         className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"/>
@@ -249,7 +292,7 @@ export default function ProductDetails({product}: { product: Product }) {
                                             </button>
 
                                             <div
-                                                className="min-w-[80px] h-12 flex items-center justify-center text-xl font-bold border-x-2">
+                                                className="min-w-20 h-12 flex items-center justify-center text-xl font-bold border-x-2">
                                                 {quantity}
                                             </div>
 

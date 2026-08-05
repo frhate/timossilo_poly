@@ -25,7 +25,7 @@ export default async function Home() {
                 <HeroSection />
                 <TrustBand />
                 <CategoriesSection />
-                <NewArrivals />
+                <NewArrivals /> 
                 <BrandsSection brands={brands} />
                 <PromotionSection />
                 <FeaturesSection />
