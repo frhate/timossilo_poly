@@ -137,3 +137,4 @@ scripts/migrate-cloudinary-to-server.sh
 scripts/setup-server-storage.sh
 .env.example
 components/FacebookPixel.tsx
+next-env.d.ts

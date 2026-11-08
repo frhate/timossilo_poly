@@ -15,6 +15,7 @@ export async function proxy(request: NextRequest) {
     '/api/telegram',
     '/refund-policy',
     '/blog',
+    '/algeria-willaya-communes',
   ]
 
   if (publicPaths.some(path => pathname.startsWith(path))) {
@@ -27,7 +28,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json)$).*)",
   ],
 }
 

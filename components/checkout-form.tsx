@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { createOrderWithTelegramConfirmation, createGuestOrder, getUserTelegramChatId } from "@/lib/actions/orders"
 import { guestCart } from "@/lib/cart-storage"
+import LocationSelect, { type LocationSelection } from "@/components/location-select"
 import Link from "next/link"
 
   interface CartItem {
@@ -51,9 +52,9 @@ import Link from "next/link"
     const [fullName, setFullName] = useState(userProfile?.full_name || "")
     const [phone, setPhone] = useState(userProfile?.phone || "")
     const [address, setAddress] = useState(userProfile?.address || "")
-    const [city, setCity] = useState(userProfile?.city || "")
-    const [zipCode, setZipCode] = useState(userProfile?.zip_code || "")
+    const [location, setLocation] = useState<LocationSelection | null>(null)
     const [notes, setNotes] = useState("")
+    const [formError, setFormError] = useState("")
     const [isProcessing, setIsProcessing] = useState(false)
     const [isLoading, setIsLoading] = useState(isGuest)
     const router = useRouter()
@@ -101,6 +102,22 @@ import Link from "next/link"
 
 const handleSubmitOrder = async (e: React.FormEvent) => {
       e.preventDefault()
+      setFormError("")
+
+      if (!location) {
+        setFormError("Veuillez sélectionner votre wilaya et votre commune.")
+        return
+      }
+
+      const cleanPhone = phone.replace(/[\s.-]/g, "")
+      if (!/^0\d{8,9}$/.test(cleanPhone)) {
+        setFormError("Veuillez saisir un numéro de téléphone valide (ex: 0550123456).")
+        return
+      }
+
+      const customerCity = `${location.communeName}, ${location.wilayaName}`
+      const customerZip = location.postCode || null
+
       setIsProcessing(true)
 
       try {
@@ -120,8 +137,8 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             customerName: fullName,
             customerPhone: phone,
             customerAddress: address,
-            customerCity: city,
-            customerZip: zipCode || null,
+            customerCity,
+            customerZip,
             notes: notes || null,
             items: cartItems.map((item) => ({
               productId: item.products.id,
@@ -150,8 +167,8 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             customerName: fullName,
             customerPhone: phone,
             customerAddress: address,
-            customerCity: city,
-            customerZip: zipCode || null,
+            customerCity,
+            customerZip,
             notes: notes || null,
             items: cartItems.map((item) => ({
               productId: item.products.id,
@@ -167,8 +184,8 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             full_name: fullName,
             phone,
             address,
-            city,
-            zip_code: zipCode || null,
+            city: customerCity,
+            zip_code: customerZip,
           }
 
           const { error: profileError } = await supabase
@@ -277,9 +294,13 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
                       <Label htmlFor="phone" className="text-sm sm:text-base">Numéro de Téléphone *</Label>
                       <Input
                         id="phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         required
+                        placeholder="05 50 12 34 56"
                         className="mt-1.5 h-10 sm:h-11"
                       />
                     </div>
@@ -289,34 +310,27 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
                     <Label htmlFor="address" className="text-sm sm:text-base">Adresse *</Label>
                     <Input
                       id="address"
+                      autoComplete="street-address"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       required
+                      placeholder="Rue, numéro, quartier, point de repère..."
                       className="mt-1.5 h-10 sm:h-11"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city" className="text-sm sm:text-base">Ville *</Label>
-                      <Input
-                        id="city"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        required
-                        className="mt-1.5 h-10 sm:h-11"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="zipCode" className="text-sm sm:text-base">Code Postal</Label>
-                      <Input
-                        id="zipCode"
-                        value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
-                        className="mt-1.5 h-10 sm:h-11"
-                      />
-                    </div>
-                  </div>
+                  <LocationSelect
+                    value={location}
+                    onChange={setLocation}
+                    defaultCity={userProfile?.city}
+                    defaultZip={userProfile?.zip_code}
+                    disabled={isProcessing}
+                  />
+
+                  <p className="text-xs text-muted-foreground">
+                    Livraison disponible dans toutes les wilayas. Le code postal est rempli
+                    automatiquement selon la commune choisie.
+                  </p>
 
                   <div>
                     <Label htmlFor="notes" className="text-sm sm:text-base">Notes Additionnelles</Label>
@@ -329,6 +343,12 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
                       placeholder="Toutes notes supplémentaires..."
                     />
                   </div>
+
+                  {formError && (
+                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+                      {formError}
+                    </p>
+                  )}
 
                   <Button
                     type="submit"
@@ -372,6 +392,27 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
                     <span>Total:</span>
                     <span>{total} DA</span>
                   </div>
+                </div>
+
+                <div className="border-t pt-4 text-xs sm:text-sm space-y-1">
+                  <p className="font-semibold">Livraison à</p>
+                  {location ? (
+                    <>
+                      <p className="font-medium">
+                        {location.communeName}, {location.wilayaName}
+                      </p>
+                      {location.postCode && (
+                        <p className="text-muted-foreground">
+                          Code postal: {location.postCode}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Sélectionnez votre wilaya et votre commune
+                    </p>
+                  )}
+                  {address && <p className="text-muted-foreground">{address}</p>}
                 </div>
 
                 <div className="bg-blue-50 p-3 sm:p-4 rounded text-xs sm:text-sm">

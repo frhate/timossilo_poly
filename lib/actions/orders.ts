@@ -86,6 +86,7 @@
             orderNumber: orderData.orderNumber,
             customerName: orderData.customerName,
             customerAddress: orderData.customerAddress,
+            customerCity: orderData.customerCity,
             customerPhone: orderData.customerPhone,
             items,
             totalAmount: orderData.totalAmount
@@ -201,7 +202,7 @@
             await sendOrderNotification(adminChatId, {
               orderNumber: orderData.orderNumber,
               customerName: orderData.customerName,
-              customerAddress: orderData.customerAddress,
+              customerAddress: `${orderData.customerAddress}, ${orderData.customerCity}`,
               customerPhone: orderData.customerPhone,
               items,
               totalAmount: orderData.totalAmount

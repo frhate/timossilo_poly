@@ -65,7 +65,10 @@ export default function RootLayout({
         <link rel="alternate" hrefLang="fr-dz" href="https://timossilo-polymobile.com/" />
         <link rel="alternate" hrefLang="x-default" href="https://timossilo-polymobile.com/" />
       </head>
-      <body className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}>
+      <body
+        suppressHydrationWarning
+        className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}
+      >
       <Suspense fallback={null}>
           <FacebookPixel />
       </Suspense>

@@ -14,12 +14,24 @@ export function getTelegramBot(): TelegramBot {
   return bot
 }
 
+        function escapeHtml(value: string | number | null | undefined): string {
+          return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+        }
+
+        function formatAmount(amount: number): string {
+          return `${amount.toFixed(2)} DA`
+        }
+
         export async function sendOrderNotification(
           chatId: string,
           orderDetails: {
             orderNumber: string
             customerName: string
             customerAddress: string
+            customerCity?: string
             customerPhone: string
             items: Array<{ name: string; quantity: number; price: number }>
             totalAmount: number
@@ -29,32 +41,51 @@ export function getTelegramBot(): TelegramBot {
             const bot = getTelegramBot()
 
             const itemsList = orderDetails.items
-              .map((item, index) =>
-                `${index + 1}. ${item.name}\n   Quantité: ${item.quantity} × ${item.price.toFixed(2)} MAD`
-              )
+              .map((item, index) => {
+                const lineTotal = item.price * item.quantity
+                return [
+                  `${index + 1}. <b>${escapeHtml(item.name)}</b>`,
+                  `    ${item.quantity} × ${formatAmount(item.price)} = ${formatAmount(lineTotal)}`,
+                ].join('\n')
+              })
               .join('\n\n')
 
-            const message = `
-        🛍️ *Nouvelle Commande*
-        
-        📋 *Numéro de commande*: \`${orderDetails.orderNumber}\`
-        
-        👤 *Informations Client*
-        Nom: ${orderDetails.customerName}
-        Téléphone: ${orderDetails.customerPhone}
-        Adresse: ${orderDetails.customerAddress}
-        
-        📦 *Produits commandés*
-        ${itemsList}
-        
-        💰 *Montant Total*: ${orderDetails.totalAmount.toFixed(2)} MAD
-        
-        ✅ Commande enregistrée avec succès
-          `.trim()
+            const receivedAt = new Intl.DateTimeFormat('fr-FR', {
+              dateStyle: 'short',
+              timeStyle: 'short',
+              timeZone: 'Africa/Algiers',
+            }).format(new Date())
+
+            const message = [
+              '🛍️ <b>Nouvelle commande</b>',
+              '',
+              `<b>Référence :</b> <code>${escapeHtml(orderDetails.orderNumber)}</code>`,
+              '',
+              '━━━━━━━━━━━━━━━━━━━━',
+              '',
+              '<b>👤 Informations client</b>',
+              `<b>Nom :</b> ${escapeHtml(orderDetails.customerName)}`,
+              `<b>Téléphone :</b> ${escapeHtml(orderDetails.customerPhone)}`,
+              `<b>Adresse :</b> ${escapeHtml(orderDetails.customerAddress)}`,
+              ...(orderDetails.customerCity
+                ? [`<b>Commune / Wilaya :</b> ${escapeHtml(orderDetails.customerCity)}`]
+                : []),
+              '',
+              '<b>📦 Articles</b>',
+              itemsList || 'Aucun article',
+              '',
+              '━━━━━━━━━━━━━━━━━━━━',
+              '',
+              `<b>💰 Total :</b> ${formatAmount(orderDetails.totalAmount)}`,
+              '<b>💳 Paiement :</b> À la livraison',
+              '',
+              '✅ <i>Commande enregistrée avec succès.</i>',
+              `<i>Reçue le ${receivedAt}</i>`,
+            ].join('\n')
 
             console.log(`📤 Sending Telegram notification to chat ID: ${chatId}`)
             const result = await bot.sendMessage(chatId, message, {
-              parse_mode: 'Markdown'
+              parse_mode: 'HTML'
             })
             console.log(`✅ Telegram notification sent successfully (message ID: ${result.message_id})`)
 

@@ -166,7 +166,7 @@ export default async function OrderSuccessPage({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Frais de livraison</span>
-                  <span className="font-medium text-green-600">Gratuit</span>
+                  <span className="font-medium text-green-600">Selon l'emplacement</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-base sm:text-lg font-bold">
