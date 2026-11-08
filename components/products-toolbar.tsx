@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState, useTransition } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, SlidersHorizontal, X } from "lucide-react"
+import { Loader2, Search, SlidersHorizontal, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import SortSelect from "@/components/sort-select"
@@ -11,24 +11,54 @@ interface ProductsToolbarProps {
     resultCount: number
 }
 
+const SEARCH_DEBOUNCE_MS = 300
+
 export default function ProductsToolbar({ resultCount }: ProductsToolbarProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [searchTerm, setSearchTerm] = useState(searchParams.get("search") ?? "")
+    const [isPending, startTransition] = useTransition()
+    const committedSearch = searchParams.get("search") ?? ""
+    const [searchTerm, setSearchTerm] = useState(committedSearch)
 
     const openFilters = () => {
         const event = new CustomEvent("toggleMobileSidebar")
         window.dispatchEvent(event)
     }
 
+    const commitSearch = useCallback(
+        (term: string) => {
+            const params = new URLSearchParams(searchParams.toString())
+            if (term) params.set("search", term)
+            else params.delete("search")
+            params.delete("page")
+
+            const query = params.toString()
+            startTransition(() => {
+                router.replace(query ? `/products?${query}` : "/products", {
+                    scroll: false,
+                })
+            })
+        },
+        [router, searchParams, startTransition],
+    )
+
+    // Keep the input in sync when the URL changes (back/forward, filter links).
+    useEffect(() => {
+        setSearchTerm(committedSearch)
+    }, [committedSearch])
+
+    // Live search: wait for a short pause instead of requiring a submit.
+    useEffect(() => {
+        const term = searchTerm.trim()
+        if (term === committedSearch) return
+
+        const timeout = setTimeout(() => commitSearch(term), SEARCH_DEBOUNCE_MS)
+        return () => clearTimeout(timeout)
+    }, [searchTerm, committedSearch, commitSearch])
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
-        const params = new URLSearchParams(searchParams.toString())
-        const term = searchTerm.trim()
-        if (term) params.set("search", term)
-        else params.delete("search")
-        params.delete("page")
-        router.push(`/products?${params.toString()}`)
+        commitSearch(searchTerm.trim())
     }
 
     return (
@@ -39,21 +69,32 @@ export default function ProductsToolbar({ resultCount }: ProductsToolbarProps) {
                     <div className="relative">
                         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
+                            type="search"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Rechercher un produit..."
                             className="h-11 rounded-full pl-10 pr-10"
                             aria-label="Rechercher"
+                            aria-busy={isPending}
+                            autoComplete="off"
+                            enterKeyHint="search"
                         />
-                        {searchTerm && (
-                            <button
-                                type="button"
-                                onClick={() => setSearchTerm("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                                aria-label="Effacer"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                        {isPending ? (
+                            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                        ) : (
+                            searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchTerm("")
+                                        commitSearch("")
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                                    aria-label="Effacer"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )
                         )}
                     </div>
                 </form>

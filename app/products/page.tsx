@@ -59,44 +59,56 @@ export default async function ProductsPage({
     const currentPage = Math.max(1, parseInt(params.page || "1"))
     const { column, ascending } = getOrderBy(params.sort)
 
+    const searchTerm = params.search?.trim().replace(/[(),]/g, " ")
+
+    // Run the independent lookups in parallel to avoid extra round trips.
+    const [
+        { data: brands },
+        { data: categories },
+        categoryLookup,
+        brandLookup,
+    ] = await Promise.all([
+        supabase.from("brands").select("*"),
+        supabase.from("categories").select("*"),
+        params.category
+            ? supabase
+                  .from("categories")
+                  .select("id")
+                  .eq("slug", params.category)
+                  .maybeSingle()
+            : Promise.resolve({ data: null as { id: string } | null }),
+        params.brand
+            ? supabase
+                  .from("brands")
+                  .select("id")
+                  .eq("slug", params.brand)
+                  .maybeSingle()
+            : Promise.resolve({ data: null as { id: string } | null }),
+    ])
+
+    // Only fetch the columns the product grid actually renders.
     let query = supabase
         .from("products")
-        .select("*, categories(name, slug)", { count: "exact" })
+        .select("id, name, price, image_urls, stock, category_id, brand_id", {
+            count: "exact",
+        })
 
-    if (params.category) {
-        const { data: category } = await supabase
-            .from("categories")
-            .select("id")
-            .eq("slug", params.category)
-            .single()
-
-        if (category) {
-            query = query.eq("category_id", category.id)
-        }
+    if (params.category && categoryLookup.data) {
+        query = query.eq("category_id", categoryLookup.data.id)
     }
 
-    if (params.search) {
-        query = query.ilike("name", `%${params.search}%`)
+    if (searchTerm) {
+        query = query.ilike("name", `%${searchTerm}%`)
     }
 
-    if (params.brand) {
-        const { data: brand } = await supabase
-            .from("brands")
-            .select("id")
-            .eq("slug", params.brand)
-            .single()
-
-        if (brand) {
-            query = query.eq("brand_id", brand.id)
-        }
+    if (params.brand && brandLookup.data) {
+        query = query.eq("brand_id", brandLookup.data.id)
     }
 
     const offset = (currentPage - 1) * PRODUCTS_PER_PAGE
-    const { data: brands } = await supabase.from("brands").select("*")
     const { data: products, error, count } = await query
         .order(column, { ascending })
         .range(offset, offset + PRODUCTS_PER_PAGE - 1)
-    const { data: categories } = await supabase.from("categories").select("*")
 
     if (error) {
         console.error("Error fetching products:", error)
