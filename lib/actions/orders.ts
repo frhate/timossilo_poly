@@ -2,11 +2,13 @@
 
     import { createClient } from "@/lib/supabase/server"
     import { sendOrderNotification } from "@/lib/telegram/bot"
+    import { sendMetaPurchaseToConversionsApi } from "@/lib/meta-capi"
 
     export async function createOrderWithTelegramConfirmation(orderData: {
       userId: string
       orderNumber: string
       totalAmount: number
+      customerEmail?: string
       customerName: string
       customerPhone: string
       customerAddress: string
@@ -95,6 +97,31 @@
           console.error("Failed to send Telegram message:", telegramError)
           // Don't fail the order if Telegram message fails
         }
+
+        // Send the server-side Purchase event. The event id matches the
+        // browser pixel's eventID (the order number) so Meta deduplicates them.
+        await sendMetaPurchaseToConversionsApi({
+          eventId: orderData.orderNumber,
+          orderId: orderData.orderNumber,
+          value: orderData.totalAmount,
+          currency: "DZD",
+          email: orderData.customerEmail,
+          phone: orderData.customerPhone,
+          fullName: orderData.customerName,
+          city: orderData.customerCity,
+          country: "dz",
+          externalId: orderData.userId,
+          contentIds: orderData.items.map((item) => item.productId),
+          contents: orderData.items.map((item) => ({
+            id: item.productId,
+            quantity: item.quantity,
+            item_price: Number(item.price),
+          })),
+          numItems: orderData.items.reduce(
+            (sum, item) => sum + item.quantity,
+            0,
+          ),
+        })
 
         return { success: true, orderId: order.id }
       } catch (error) {
@@ -214,6 +241,30 @@
           console.error("Failed to send Telegram message:", telegramError)
           // Don't fail the order if Telegram message fails
         }
+
+        // Send the server-side Purchase event. The event id matches the
+        // browser pixel's eventID (the order number) so Meta deduplicates them.
+        await sendMetaPurchaseToConversionsApi({
+          eventId: orderData.orderNumber,
+          orderId: orderData.orderNumber,
+          value: orderData.totalAmount,
+          currency: "DZD",
+          email: orderData.guestEmail,
+          phone: orderData.customerPhone,
+          fullName: orderData.customerName,
+          city: orderData.customerCity,
+          country: "dz",
+          contentIds: orderData.items.map((item) => item.productId),
+          contents: orderData.items.map((item) => ({
+            id: item.productId,
+            quantity: item.quantity,
+            item_price: Number(item.price),
+          })),
+          numItems: orderData.items.reduce(
+            (sum, item) => sum + item.quantity,
+            0,
+          ),
+        })
 
         return { success: true, orderId: order.id }
       } catch (error) {

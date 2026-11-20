@@ -235,6 +235,7 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             userId: user.user.id,
             orderNumber,
             totalAmount: total,
+            customerEmail: email,
             customerName: fullName,
             customerPhone: phone,
             customerAddress: address,
