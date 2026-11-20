@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { createOrderWithTelegramConfirmation, createGuestOrder, getUserTelegramChatId } from "@/lib/actions/orders"
 import { guestCart } from "@/lib/cart-storage"
-import { setAdvancedMatching, splitMetaName, trackMetaEvent } from "@/lib/meta-pixel"
+import { setAdvancedMatching, splitMetaName, trackMetaEvent, trackMetaPurchase } from "@/lib/meta-pixel"
 import LocationSelect, { type LocationSelection } from "@/components/location-select"
 import Link from "next/link"
 
@@ -99,7 +99,7 @@ import Link from "next/link"
       }
     }, [isGuest, router, supabase])
 
-    const total = cartItems.reduce((sum, item) => sum + item.products.price * item.quantity, 0)
+    const total = cartItems.reduce((sum, item) => sum + Number(item.products.price) * item.quantity, 0)
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
     const hasTrackedInitiateCheckout = useRef(false)
@@ -143,23 +143,18 @@ import Link from "next/link"
     }, [cartItems, itemCount, total])
 
     const trackPurchase = (orderNumber: string) => {
-      trackMetaEvent(
-        "Purchase",
-        {
-          content_ids: cartItems.map((item) => item.products.id),
-          content_type: "product",
-          contents: cartItems.map((item) => ({
-            id: item.products.id,
-            quantity: item.quantity,
-            item_price: item.products.price,
-          })),
-          num_items: itemCount,
-          value: total,
-          currency: "DZD",
-          order_id: orderNumber,
-        },
-        orderNumber,
-      )
+      trackMetaPurchase({
+        orderId: orderNumber,
+        value: total,
+        currency: "DZD",
+        contentIds: cartItems.map((item) => item.products.id),
+        contents: cartItems.map((item) => ({
+          id: item.products.id,
+          quantity: item.quantity,
+          item_price: Number(item.products.price),
+        })),
+        numItems: itemCount,
+      })
     }
 
 const handleSubmitOrder = async (e: React.FormEvent) => {

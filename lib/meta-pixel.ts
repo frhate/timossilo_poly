@@ -307,13 +307,106 @@ export function trackMetaEvent(
   if (typeof window === "undefined") return
   if (!META_PIXEL_ID) return
 
+  let safeParams = params
+
+  // Meta requires a numeric value > 0 and a 3-letter ISO currency code for
+  // Purchase, otherwise Events Manager reports "Value field is missing" /
+  // "Currency field is missing" and ROAS cannot be calculated.
+  if (name === "Purchase") {
+    const value = Number(params.value)
+    const currency = String(params.currency ?? "DZD")
+      .trim()
+      .toUpperCase()
+
+    if (!Number.isFinite(value) || value <= 0) {
+      console.warn(
+        "[Meta Pixel] Purchase not sent: value must be a number greater than 0.",
+        params,
+      )
+      return
+    }
+
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      console.warn(
+        "[Meta Pixel] Purchase not sent: currency must be a 3-letter ISO code.",
+        currency,
+      )
+      return
+    }
+
+    safeParams = {
+      ...params,
+      value: Math.round(value * 100) / 100,
+      currency,
+    }
+  }
+
   whenFbqReady((fbq) => {
     if (eventId) {
-      fbq("track", name, params, { eventID: eventId })
+      fbq("track", name, safeParams, { eventID: eventId })
     } else {
-      fbq("track", name, params)
+      fbq("track", name, safeParams)
     }
   })
+}
+
+export interface MetaPurchaseItem {
+  id: string
+  quantity: number
+  item_price: number
+}
+
+export interface MetaPurchaseData {
+  value: number | string
+  currency?: string
+  orderId?: string
+  contentIds?: string[]
+  contents?: MetaPurchaseItem[]
+  numItems?: number
+  extra?: Record<string, unknown>
+}
+
+/**
+ * Sends a Purchase event that is guaranteed to contain a valid `value` and
+ * `currency`, which Meta needs for ROAS reporting.
+ */
+export function trackMetaPurchase(data: MetaPurchaseData) {
+  const value = Number(data.value)
+  const currency = String(data.currency || "DZD")
+    .trim()
+    .toUpperCase()
+
+  if (!Number.isFinite(value) || value <= 0) {
+    console.warn(
+      "[Meta Pixel] Purchase not sent: order value must be greater than 0.",
+      data,
+    )
+    return
+  }
+
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    console.warn(
+      "[Meta Pixel] Purchase not sent: currency must be a 3-letter ISO code.",
+      currency,
+    )
+    return
+  }
+
+  const params: Record<string, unknown> = {
+    ...data.extra,
+    value: Math.round(value * 100) / 100,
+    currency,
+  }
+
+  if (data.orderId) params.order_id = data.orderId
+  if (data.contentIds?.length) {
+    params.content_ids = data.contentIds
+    params.content_type = "product"
+  }
+  if (data.contents?.length) params.contents = data.contents
+  if (typeof data.numItems === "number") params.num_items = data.numItems
+
+  trackMetaEvent("Purchase", params, data.orderId)
 }
 
 /** Tracks a custom (non-standard) Meta event. */
