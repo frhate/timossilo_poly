@@ -25,3 +25,14 @@ initializeFacebookPixel(
 );
 
 window.fbq("init", PIXEL_ID);
+
+// Manual Advanced Matching: reuse the data saved for this session (login,
+// checkout, account page, ...). The pixel hashes the values automatically.
+try {
+    const storedAdvancedMatching = window.sessionStorage.getItem("meta_advanced_matching");
+    if (storedAdvancedMatching) {
+        window.fbq("init", PIXEL_ID, JSON.parse(storedAdvancedMatching));
+    }
+} catch (error) {
+    // Ignore malformed/missing storage.
+}

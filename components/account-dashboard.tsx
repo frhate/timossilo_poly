@@ -7,8 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
+import {
+  clearAdvancedMatching,
+  setAdvancedMatching,
+  splitMetaName,
+} from "@/lib/meta-pixel"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import TelegramLinkCard from "@/components/telegram-link-card"
 
@@ -48,6 +53,20 @@ export default function AccountDashboard({
   const router = useRouter()
   const supabase = createClient()
 
+  // Meta Manual Advanced Matching: the account page knows the customer email
+  // and profile details, so keep the pixel match quality high.
+  useEffect(() => {
+    setAdvancedMatching({
+      email: user?.email,
+      phone,
+      ...splitMetaName(fullName),
+      city,
+      zip: zipCode,
+      country: "dz",
+      externalId: user?.id,
+    })
+  }, [user?.email, user?.id, fullName, phone, city, zipCode])
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
@@ -86,6 +105,7 @@ export default function AccountDashboard({
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+    clearAdvancedMatching()
     router.push("/")
   }
 

@@ -11,6 +11,7 @@ import {Badge} from "@/components/ui/badge"
 import {ShoppingCart, Check, ChevronLeft, Package, Truck, Shield} from "lucide-react"
 import type {Session, AuthChangeEvent} from "@supabase/supabase-js"
 import {guestCart} from "@/lib/cart-storage"
+import {setAdvancedMatching, trackMetaEvent} from "@/lib/meta-pixel"
 
 interface Product {
     id: string
@@ -51,6 +52,26 @@ export default function ProductDetails({product}: { product: Product }) {
 
         return () => subscription.unsubscribe()
     }, [])
+
+    // Meta Manual Advanced Matching for logged-in visitors.
+    useEffect(() => {
+        if (!session?.user?.email) return
+        setAdvancedMatching({
+            email: session.user.email,
+            externalId: session.user.id,
+        })
+    }, [session?.user?.email, session?.user?.id])
+
+    useEffect(() => {
+        trackMetaEvent("ViewContent", {
+            content_ids: [product.id],
+            content_type: "product",
+            content_name: product.name,
+            content_category: product.categories?.name,
+            value: product.price,
+            currency: "DZD",
+        })
+    }, [product.id])
 
     useEffect(() => {
         const trackView = async () => {
@@ -116,6 +137,21 @@ export default function ProductDetails({product}: { product: Product }) {
             }
 
             setIsAdded(true)
+            trackMetaEvent("AddToCart", {
+                content_ids: [product.id],
+                content_type: "product",
+                content_name: product.name,
+                content_category: product.categories?.name,
+                value: product.price * quantity,
+                currency: "DZD",
+                contents: [
+                    {
+                        id: product.id,
+                        quantity,
+                        item_price: product.price,
+                    },
+                ],
+            })
             setTimeout(() => setIsAdded(false), 1600)
             setTimeout(() => router.push("/cart"), 900)
         } catch (e) {

@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
-import FacebookPixel from "@/components/FacebookPixel";
+import MetaPixel from "@/components/meta-pixel";
 import OrganizationSchema from "@/components/seo/organization-schema";
 import WebsiteSchema from "@/components/seo/website-schema";
 
@@ -70,7 +70,7 @@ export default function RootLayout({
         className={`${montserrat.className} font-sans antialiased flex flex-col min-h-screen`}
       >
       <Suspense fallback={null}>
-          <FacebookPixel />
+          <MetaPixel />
       </Suspense>
       <OrganizationSchema />
       <WebsiteSchema />

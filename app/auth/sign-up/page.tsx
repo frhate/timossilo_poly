@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { createClient } from "@/lib/supabase/client"
+import { setAdvancedMatching } from "@/lib/meta-pixel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -46,6 +47,8 @@ export default function SignUpPage() {
         },
       })
       if (error) throw error
+      // Meta Manual Advanced Matching: the account email is now known.
+      setAdvancedMatching({ email })
       router.push("/auth/check-email")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")

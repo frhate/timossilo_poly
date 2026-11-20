@@ -1,9 +1,14 @@
-export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
+"use client"
 
-export const pageview = () => {
-    window.fbq("track", "PageView");
-};
-
-export const event = (name: string, options = {}) => {
-    window.fbq("track", name, options);
-};
+/**
+ * Backwards-compatible helpers.
+ *
+ * Prefer importing from `@/lib/meta-pixel` directly. These aliases keep the
+ * old `lib/fpixel` API working while sharing the same normalisation and
+ * advanced matching logic.
+ */
+export {
+  META_PIXEL_ID as FB_PIXEL_ID,
+  trackMetaPageView as pageview,
+  trackMetaEvent as event,
+} from "@/lib/meta-pixel"

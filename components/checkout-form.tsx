@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createOrderWithTelegramConfirmation, createGuestOrder, getUserTelegramChatId } from "@/lib/actions/orders"
 import { guestCart } from "@/lib/cart-storage"
+import { setAdvancedMatching, splitMetaName, trackMetaEvent } from "@/lib/meta-pixel"
 import LocationSelect, { type LocationSelection } from "@/components/location-select"
 import Link from "next/link"
 
@@ -99,6 +100,67 @@ import Link from "next/link"
     }, [isGuest, router, supabase])
 
     const total = cartItems.reduce((sum, item) => sum + item.products.price * item.quantity, 0)
+    const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+
+    const hasTrackedInitiateCheckout = useRef(false)
+
+    // Meta Manual Advanced Matching: keep the pixel in sync with what the
+    // customer types on the checkout form (guest email / phone / name / city).
+    useEffect(() => {
+      if (!email && !phone && !fullName) return
+
+      const timeout = window.setTimeout(() => {
+        setAdvancedMatching({
+          email,
+          phone,
+          ...splitMetaName(fullName),
+          city: location?.communeName,
+          state: location?.wilayaName,
+          zip: location?.postCode,
+          country: "dz",
+        })
+      }, 800)
+
+      return () => window.clearTimeout(timeout)
+    }, [email, phone, fullName, location])
+
+    useEffect(() => {
+      if (hasTrackedInitiateCheckout.current || cartItems.length === 0) return
+      hasTrackedInitiateCheckout.current = true
+
+      trackMetaEvent("InitiateCheckout", {
+        content_ids: cartItems.map((item) => item.products.id),
+        content_type: "product",
+        contents: cartItems.map((item) => ({
+          id: item.products.id,
+          quantity: item.quantity,
+          item_price: item.products.price,
+        })),
+        num_items: itemCount,
+        value: total,
+        currency: "DZD",
+      })
+    }, [cartItems, itemCount, total])
+
+    const trackPurchase = (orderNumber: string) => {
+      trackMetaEvent(
+        "Purchase",
+        {
+          content_ids: cartItems.map((item) => item.products.id),
+          content_type: "product",
+          contents: cartItems.map((item) => ({
+            id: item.products.id,
+            quantity: item.quantity,
+            item_price: item.products.price,
+          })),
+          num_items: itemCount,
+          value: total,
+          currency: "DZD",
+          order_id: orderNumber,
+        },
+        orderNumber,
+      )
+    }
 
 const handleSubmitOrder = async (e: React.FormEvent) => {
       e.preventDefault()
@@ -114,6 +176,18 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
         setFormError("Veuillez saisir un numéro de téléphone valide (ex: 0550123456).")
         return
       }
+
+      // Apply Manual Advanced Matching before the order/purchase events so the
+      // conversion is attributed to the right customer.
+      setAdvancedMatching({
+        email,
+        phone: cleanPhone,
+        ...splitMetaName(fullName),
+        city: location.communeName,
+        state: location.wilayaName,
+        zip: location.postCode,
+        country: "dz",
+      })
 
       const customerCity = `${location.communeName}, ${location.wilayaName}`
       const customerZip = location.postCode || null
@@ -149,6 +223,8 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
 
           // Clear guest cart from localStorage
           guestCart.clear()
+
+          trackPurchase(orderNumber)
 
           router.push(`/order-success/${orderId}`)
         } else {
@@ -207,6 +283,8 @@ const handleSubmitOrder = async (e: React.FormEvent) => {
             console.error("Cart clear error:", cartError)
             // Don't throw - cart clear is not critical
           }
+
+          trackPurchase(orderNumber)
 
           router.push(`/order-success/${orderId}`)
         }
