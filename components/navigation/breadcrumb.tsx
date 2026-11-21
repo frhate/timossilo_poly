@@ -1,35 +1,41 @@
 "use client"
+
 import Link from "next/link"
 import {ChevronRight} from "lucide-react"
+
 interface BreadcrumbItem {
-  label: string
-  href?: string
+    label: string
+    href?: string
 }
+
 interface BreadcrumbProps {
-  items: BreadcrumbItem[]
+    items: BreadcrumbItem[]
 }
+
 export default function Breadcrumb({items}: BreadcrumbProps) {
-  return (
-    <nav aria-label="Breadcrumb" className="mb-6">
-      <ol className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
-        <li>
-          <Link href="/" className="hover:text-primary transition-colors">
-            Accueil
-          </Link>
-        </li>
-        {items.map((item, index) => (
-          <li key={index} className="flex items-center gap-1.5">
-            <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-            {item.href ? (
-              <Link href={item.href} className="hover:text-primary transition-colors">
-                {item.label}
-              </Link>
-            ) : (
-              <span className="text-foreground font-medium">{item.label}</span>
-            )}
-          </li>
-        ))}
-      </ol>
-    </nav>
-  )
+    return (
+        <nav aria-label="Fil d'Ariane" className="mb-5">
+            <ol className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
+                <li>
+                    <Link href="/" className="rounded px-0.5 transition-colors hover:text-foreground">
+                        Accueil
+                    </Link>
+                </li>
+                {items.map((item, index) => (
+                    <li key={index} className="flex min-w-0 items-center gap-1.5">
+                        <ChevronRight className="size-3.5 shrink-0 opacity-60"/>
+                        {item.href ? (
+                            <Link href={item.href} className="rounded px-0.5 transition-colors hover:text-foreground">
+                                {item.label}
+                            </Link>
+                        ) : (
+                            <span className="max-w-[42ch] truncate font-medium text-foreground">
+                                {item.label}
+                            </span>
+                        )}
+                    </li>
+                ))}
+            </ol>
+        </nav>
+    )
 }

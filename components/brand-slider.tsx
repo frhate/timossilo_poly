@@ -1,121 +1,161 @@
-'use client'
+"use client"
 
-import { Brands } from "@/lib/types/admin"
 import Image from "next/image"
-import { useState, useRef } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+import {useSearchParams} from "next/navigation"
+import {useEffect, useRef, useState} from "react"
+import {ChevronLeft, ChevronRight, LayoutGrid} from "lucide-react"
+import {cn} from "@/lib/utils"
+import type {Brands} from "@/lib/types/admin"
 
 interface BrandSliderProps {
     brands: Brands[]
     selectedBrand?: string
 }
 
-export default function BrandSlider({ brands, selectedBrand }: BrandSliderProps) {
+export default function BrandSlider({brands, selectedBrand}: BrandSliderProps) {
+    const searchParams = useSearchParams()
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [canScrollLeft, setCanScrollLeft] = useState(false)
-    const [canScrollRight, setCanScrollRight] = useState(true)
+    const [canScrollRight, setCanScrollRight] = useState(false)
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("brand")
+    params.delete("page")
+    const query = params.toString()
+    const allBrandsHref = query ? `/products?${query}` : "/products"
 
     const checkScroll = () => {
-        if (scrollContainerRef.current) {
-            const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-            setCanScrollLeft(scrollLeft > 0)
-            setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10)
-        }
+        const container = scrollContainerRef.current
+        if (!container) return
+        const {scrollLeft, scrollWidth, clientWidth} = container
+        setCanScrollLeft(scrollLeft > 4)
+        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4)
     }
 
-    const scroll = (direction: 'left' | 'right') => {
-        if (scrollContainerRef.current) {
-            const scrollAmount = 300
-            scrollContainerRef.current.scrollBy({
-                left: direction === 'left' ? -scrollAmount : scrollAmount,
-                behavior: 'smooth',
-            })
-            setTimeout(checkScroll, 300)
+    useEffect(() => {
+        checkScroll()
+        const container = scrollContainerRef.current
+        if (!container) return
+
+        const observer = new ResizeObserver(checkScroll)
+        observer.observe(container)
+        window.addEventListener("resize", checkScroll)
+
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("resize", checkScroll)
         }
+    }, [brands])
+
+    const scroll = (direction: "left" | "right") => {
+        const container = scrollContainerRef.current
+        if (!container) return
+        container.scrollBy({
+            left: direction === "left" ? -320 : 320,
+            behavior: "smooth",
+        })
     }
 
     return (
-        <div className="w-full mb-8 sm:mb-10 lg:mb-12">
-            <div className="mb-4">
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
-                    Parcourir par marque
-                </h2>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">
-                    Découvrez nos meilleures marques
-                </p>
-            </div>
-
-            <div className="relative group">
-                {/* Left Arrow */}
-                {canScrollLeft && (
-                    <button
-                        onClick={() => scroll('left')}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 rounded-full p-2 shadow-lg transition-all"
-                        aria-label="Scroll left"
-                    >
-                        <ChevronLeft className="w-5 h-5 text-gray-700" />
-                    </button>
-                )}
-
-                {/* Brand Slider Container */}
-                <div
-                    ref={scrollContainerRef}
-                    onScroll={checkScroll}
-                    className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-hide scroll-smooth px-10 sm:px-12 py-4"
-                >
-                    {brands.map((brand) => {
-                        const isSelected = selectedBrand === brand.slug
-                        return (
-                            <Link
-                                key={brand.id}
-                                href={`/products?brand=${brand.slug}`}
-                                className={`flex-shrink-0 transition-all duration-300 transform hover:scale-105 ${
-                                    isSelected ? 'scale-110' : ''
-                                }`}
-                            >
-                                <div
-                                    className={`relative w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all ${
-                                        isSelected
-                                            ? 'border-primary shadow-lg'
-                                            : 'border-border hover:border-primary/40 shadow-sm hover:shadow-md'
-                                    }`}
-                                >
-                                    {brand.image_url ? (
-                                        <Image
-                                            src={brand.image_url}
-                                            alt={brand.name}
-                                            fill
-                                            className="object-contain p-3 sm:p-4 bg-white"
-                                            sizes="(max-width: 640px) 96px, (max-width: 1024px) 112px, 128px"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                                            <span className="text-xs sm:text-sm font-semibold text-gray-600 text-center px-2">
-                                                {brand.name}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-gray-700 text-center truncate px-1">
-                                    {brand.name}
-                                </p>
-                            </Link>
-                        )
-                    })}
+        <section className="mb-6 rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Marques
+                    </p>
+                    <h2 className="mt-0.5 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                        Parcourir par marque
+                    </h2>
                 </div>
 
-                {/* Right Arrow */}
-                {canScrollRight && (
+                <div className="flex items-center gap-1.5">
                     <button
-                        onClick={() => scroll('right')}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-gray-100 rounded-full p-2 shadow-lg transition-all"
-                        aria-label="Scroll right"
+                        type="button"
+                        onClick={() => scroll("left")}
+                        disabled={!canScrollLeft}
+                        aria-label="Défiler les marques vers la gauche"
+                        className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                     >
-                        <ChevronRight className="w-5 h-5 text-gray-700" />
+                        <ChevronLeft className="size-4"/>
                     </button>
-                )}
+                    <button
+                        type="button"
+                        onClick={() => scroll("right")}
+                        disabled={!canScrollRight}
+                        aria-label="Défiler les marques vers la droite"
+                        className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
+                    >
+                        <ChevronRight className="size-4"/>
+                    </button>
+                </div>
             </div>
-        </div>
+
+            <div
+                ref={scrollContainerRef}
+                onScroll={checkScroll}
+                className="flex snap-x gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3"
+            >
+                {selectedBrand && (
+                    <Link
+                        href={allBrandsHref}
+                        className="group flex w-[72px] shrink-0 snap-start flex-col items-center gap-2 sm:w-20"
+                    >
+                        <span className="flex size-16 items-center justify-center rounded-2xl border border-dashed border-border bg-background text-muted-foreground transition-colors group-hover:border-primary/50 group-hover:text-foreground sm:size-[72px]">
+                            <LayoutGrid className="size-5"/>
+                        </span>
+                        <span className="max-w-full truncate text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                            Toutes
+                        </span>
+                    </Link>
+                )}
+
+                {brands.map((brand) => {
+                    const isSelected = selectedBrand === brand.slug
+
+                    return (
+                        <Link
+                            key={brand.id}
+                            href={`/products?brand=${brand.slug}`}
+                            className="group flex w-[72px] shrink-0 snap-start flex-col items-center gap-2 sm:w-20"
+                            aria-current={isSelected ? "true" : undefined}
+                        >
+                            <span
+                                className={cn(
+                                    "relative flex size-16 items-center justify-center overflow-hidden rounded-2xl border bg-background transition-all sm:size-[72px]",
+                                    isSelected
+                                        ? "border-primary ring-2 ring-primary/25"
+                                        : "border-border/60 group-hover:border-border group-hover:shadow-sm",
+                                )}
+                            >
+                                {brand.image_url ? (
+                                    <Image
+                                        src={brand.image_url}
+                                        alt={brand.name}
+                                        fill
+                                        sizes="72px"
+                                        className="object-contain p-2.5"
+                                    />
+                                ) : (
+                                    <span className="px-1 text-center text-[10px] font-semibold leading-tight text-muted-foreground">
+                                        {brand.name}
+                                    </span>
+                                )}
+                            </span>
+                            <span
+                                className={cn(
+                                    "max-w-full truncate text-[11px] font-medium transition-colors",
+                                    isSelected
+                                        ? "font-semibold text-foreground"
+                                        : "text-muted-foreground group-hover:text-foreground",
+                                )}
+                            >
+                                {brand.name}
+                            </span>
+                        </Link>
+                    )
+                })}
+            </div>
+        </section>
     )
 }

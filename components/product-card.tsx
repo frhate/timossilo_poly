@@ -2,244 +2,205 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import {useState} from "react"
-import {useRouter} from "next/navigation"
+import {useMemo, useState} from "react"
 import {createClient} from "@/lib/supabase/client"
-import {Card, CardContent} from "@/components/ui/card"
-import {Button} from "@/components/ui/button"
-import {ShoppingCart, Check, Eye, Package} from "lucide-react"
+import {Check, Package, ShoppingCart} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {guestCart} from "@/lib/cart-storage"
+import {trackMetaEvent} from "@/lib/meta-pixel"
 
 interface Product {
     id: string
     name: string
     price: number
-    image_urls: string []
+    image_urls: string[]
     stock: number
 }
 
 export default function ProductCard({product}: { product: Product }) {
     const [isAdding, setIsAdding] = useState(false)
     const [isAdded, setIsAdded] = useState(false)
-    const supabase = createClient()
+    const [error, setError] = useState<string | null>(null)
+    const supabase = useMemo(() => createClient(), [])
+
+    const image = product.image_urls?.find((url) => Boolean(url))
+    const isOutOfStock = product.stock <= 0
+    const isLowStock = !isOutOfStock && product.stock <= 5
+    const href = `/products/${product.id}`
 
     const formatPrice = (value: number) =>
-        new Intl.NumberFormat("fr-DZ", {
-            style: "currency",
-            currency: "DZD",
-            minimumFractionDigits: 2,
-        }).format(value)
+        new Intl.NumberFormat("fr-DZ", {maximumFractionDigits: 0}).format(value) + " د.ج"
 
     const handleAddToCart = async () => {
-        if (product.stock === 0) return
+        if (isOutOfStock) return
 
         setIsAdding(true)
-        try {
-            const {data: user} = await supabase.auth.getUser()
+        setError(null)
 
-            if (user.user) {
-                // Authenticated user - add to database
-                // Vérifier si l'article existe déjà dans le panier
+        try {
+            // Read the live session so a logged-in user never lands in the guest cart.
+            const {data: authData} = await supabase.auth.getSession()
+            const userId = authData.session?.user?.id
+
+            if (userId) {
                 const {data: existingItem, error: fetchError} = await supabase
                     .from("cart_items")
                     .select("id, quantity")
-                    .eq("user_id", user.user.id)
+                    .eq("user_id", userId)
                     .eq("product_id", product.id)
                     .maybeSingle()
 
                 if (fetchError) throw fetchError
 
+                const nextQuantity = Math.min((existingItem?.quantity ?? 0) + 1, product.stock)
+
                 if (existingItem) {
-                    // Mettre à jour la quantité si l'article existe
-                    const newQuantity = existingItem.quantity + 1
-
-                    // Vérifier que la nouvelle quantité ne dépasse pas le stock
-                    if (newQuantity > product.stock) {
-                        alert(`Stock insuffisant. Quantité maximale disponible: ${product.stock}`)
-                        return
-                    }
-
                     const {error: updateError} = await supabase
                         .from("cart_items")
-                        .update({quantity: newQuantity})
+                        .update({quantity: nextQuantity})
                         .eq("id", existingItem.id)
-
                     if (updateError) throw updateError
                 } else {
-                    // Insérer un nouvel article
                     const {error: insertError} = await supabase
                         .from("cart_items")
                         .insert({
-                            user_id: user.user.id,
+                            user_id: userId,
                             product_id: product.id,
                             quantity: 1,
                         })
-
                     if (insertError) throw insertError
                 }
             } else {
-                // Guest user - add to localStorage
-                const existingItems = guestCart.getItems()
-                const existingItem = existingItems.find(item => item.productId === product.id)
-                const newQuantity = existingItem ? existingItem.quantity + 1 : 1
-
-                // Vérifier que la nouvelle quantité ne dépasse pas le stock
-                if (newQuantity > product.stock) {
-                    alert(`Stock insuffisant. Quantité maximale disponible: ${product.stock}`)
-                    return
-                }
-
-                guestCart.setItem(product.id, newQuantity)
+                const existingItem = guestCart.getItems().find((item) => item.productId === product.id)
+                const nextQuantity = Math.min((existingItem?.quantity ?? 0) + 1, product.stock)
+                guestCart.setItem(product.id, nextQuantity)
             }
 
             setIsAdded(true)
-            setTimeout(() => setIsAdded(false), 2000)
-        } catch (error: any) {
-            console.error("Erreur lors de l'ajout au panier:", error)
+            window.setTimeout(() => setIsAdded(false), 2000)
 
-            // Message d'erreur plus détaillé pour le débogage
-            if (error?.code === '23505') {
-                alert("Cet article est déjà dans votre panier.")
-            } else {
-                alert("Une erreur s'est produite. Veuillez réessayer.")
-            }
+            trackMetaEvent("AddToCart", {
+                content_ids: [product.id],
+                content_type: "product",
+                content_name: product.name,
+                value: product.price,
+                currency: "DZD",
+                contents: [
+                    {
+                        id: product.id,
+                        quantity: 1,
+                        item_price: product.price,
+                    },
+                ],
+            })
+        } catch (cartError) {
+            console.error("Erreur lors de l'ajout au panier:", cartError)
+            setError("Erreur, réessayez")
         } finally {
             setIsAdding(false)
         }
     }
-    const getStockStatus = () => {
-        if (product.stock === 0) {
-            return {
-                label: "Rupture de stock",
-                variant: "destructive" as const,
-                bgClass: "bg-red-50",
-                textClass: "text-red-700",
-                badgeClass: "bg-red-100 text-red-800",
-            }
-        }
-        if (product.stock <= 5) {
-            return {
-                label: `Dernières unités (${product.stock})`,
-                variant: "warning" as const,
-                bgClass: "bg-amber-50",
-                textClass: "text-amber-700",
-                badgeClass: "bg-amber-100 text-amber-800",
-            }
-        }
-        return {
-            label: "En stock",
-            variant: "success" as const,
-            bgClass: "bg-emerald-50",
-            textClass: "text-emerald-700",
-            badgeClass: "bg-emerald-100 text-emerald-800",
-        }
-    }
-
-    const stockStatus = getStockStatus()
-    const isOutOfStock = product.stock === 0
 
     return (
-        <Card
-            className="group h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl border-border/50">
-            {/* Image Container */}
-<div className="relative aspect-square bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
-{product.image_urls && product.image_urls.length > 0 ? (
-    <Image
-        src={product.image_urls[0]}
-        alt={product.name}
-        fill
-        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        className="object-cover transition-transform duration-500 group-hover:scale-110"
-        loading="lazy"
-    />
-) : (
-    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-        <Package className="w-16 h-16 mb-3 opacity-30" strokeWidth={1.5}/>
-        <span className="text-sm font-medium">Image non disponible</span>
-    </div>
-)}
-
-                {/* Stock Badge */}
-                <div className="absolute top-3 left-3">
-                        <span
-                            className={cn(
-                                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm backdrop-blur-sm",
-                                stockStatus.badgeClass
-                            )}
-                        >
-                          <span className={cn("w-2 h-2 rounded-full", stockStatus.textClass.replace("text-", "bg-"))}/>
-                            {stockStatus.label}
-                        </span>
-                </div>
-
-                {/* Hover Actions */}
-                <div
-                    className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-                    <div className="flex items-center gap-2">
-                        <Link href={`/products/${product.id}`} className="flex-1">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className="w-full bg-white/95 hover:bg-white text-foreground shadow-lg"
-                            >
-                                <Eye className="w-4 h-4 mr-2"/>
-                                Voir détails
-                            </Button>
-                        </Link>
+        <article
+            className={cn(
+                "group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card",
+                "shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-all duration-300",
+                "hover:-translate-y-0.5 hover:border-border hover:shadow-[0_24px_48px_-28px_rgba(16,24,40,0.28)]",
+            )}
+        >
+            <Link
+                href={href}
+                aria-label={`Voir ${product.name}`}
+                className="relative block aspect-square overflow-hidden bg-muted/20"
+            >
+                {image ? (
+                    <Image
+                        src={image}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 33vw, 25vw"
+                        className={cn(
+                            "object-contain p-5 transition-transform duration-500 ease-out group-hover:scale-[1.04]",
+                            isOutOfStock && "opacity-50 grayscale",
+                        )}
+                    />
+                ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Package className="size-10 opacity-30" strokeWidth={1.25}/>
+                        <span className="text-[11px] font-medium">Image non disponible</span>
                     </div>
-                </div>
-            </div>
+                )}
 
-            {/* Content */}
-            <CardContent className="flex-1 flex flex-col p-4 space-y-3">
-                {/* Product Name */}
-                <Link href={`/products/${product.id}`} className="group/link">
-                    <h3 className="text-base font-semibold text-foreground line-clamp-2 leading-snug group-hover/link:text-primary transition-colors">
-                        {product.name}
-                    </h3>
+                {isOutOfStock && (
+                    <span className="absolute left-3 top-3 inline-flex items-center rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground backdrop-blur">
+                        Épuisé
+                    </span>
+                )}
+                {isLowStock && (
+                    <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/95 px-2.5 py-1 text-[11px] font-semibold text-amber-700 backdrop-blur dark:border-amber-900/40 dark:bg-amber-950/80 dark:text-amber-300">
+                        <span className="size-1.5 rounded-full bg-amber-500"/>
+                        Derniers {product.stock}
+                    </span>
+                )}
+            </Link>
+
+            <div className="flex flex-1 flex-col gap-3 p-3.5 sm:p-4">
+                <Link
+                    href={href}
+                    className="line-clamp-2 min-h-[2.5rem] text-[13px] font-medium leading-snug text-foreground transition-colors hover:text-primary sm:text-sm"
+                >
+                    {product.name}
                 </Link>
 
-                {/* Price & Stock Status */}
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-3 mt-auto pt-2">
-                    <div className="flex-1">
-                        <p className="text-xl sm:text-2xl font-bold text-foreground leading-none">
+                <div className="mt-auto space-y-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-base font-bold tracking-tight tabular-nums text-foreground sm:text-[17px]">
                             {formatPrice(product.price)}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">Prix TTC</p>
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            TTC
+                        </span>
                     </div>
 
+                    <button
+                        type="button"
+                        onClick={handleAddToCart}
+                        disabled={isOutOfStock || isAdding}
+                        className={cn(
+                            "inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-[13px] font-semibold transition-all",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
+                            isAdded
+                                ? "border-emerald-600 bg-emerald-600 text-white"
+                                : "border-border/70 bg-transparent text-foreground hover:border-primary/50 hover:bg-primary/10 disabled:opacity-50",
+                        )}
+                    >
+                        {isAdded ? (
+                            <>
+                                <Check className="size-4"/>
+                                Ajouté
+                            </>
+                        ) : isOutOfStock ? (
+                            "Rupture de stock"
+                        ) : (
+                            <>
+                                <ShoppingCart className="size-4"/>
+                                {isAdding ? "Ajout…" : "Ajouter"}
+                            </>
+                        )}
+                    </button>
 
+                    {error && (
+                        <p role="alert" className="text-center text-[11px] font-medium text-red-600 dark:text-red-400">
+                            {error}
+                        </p>
+                    )}
                 </div>
-
-                {/* Add to Cart Button */}
-                <Button
-                    onClick={handleAddToCart}
-                    disabled={isOutOfStock || isAdding}
-                    className={cn(
-                        "w-full transition-all duration-200",
-                        isAdded && "bg-emerald-600 hover:bg-emerald-700"
-                    )}
-                    size="default"
-                >
-                    {isAdded ? (
-                        <>
-                            <Check className="w-4 h-4 mr-2"/>
-                            Ajouté au panier
-                        </>
-                    ) : (
-                        <>
-                            <ShoppingCart className="w-4 h-4 mr-2"/>
-                            {isAdding ? "Ajout en cours..." : isOutOfStock ? "Rupture de stock" : "Ajouter au panier"}
-                        </>
-                    )}
-                </Button>
-            </CardContent>
-
-            {/* Screen Reader Announcement */}
-            <div className="sr-only" aria-live="polite" aria-atomic="true">
-                {isAdded && `${product.name} a été ajouté au panier avec succès`}
             </div>
-        </Card>
+
+            <div className="sr-only" aria-live="polite" aria-atomic="true">
+                {isAdded && `${product.name} a été ajouté au panier`}
+            </div>
+        </article>
     )
 }

@@ -33,8 +33,11 @@ export default function SortSelect() {
 
     return (
         <Select value={current} onValueChange={handleChange}>
-            <SelectTrigger className="w-full rounded-full sm:w-[200px]">
-                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            <SelectTrigger
+                className="h-11 w-full rounded-xl border-border/70 bg-card shadow-none sm:w-[190px]"
+                aria-label="Trier les produits"
+            >
+                <ArrowUpDown className="size-4 text-muted-foreground" />
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>

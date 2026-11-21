@@ -1,13 +1,27 @@
 "use client"
 
-import {Button} from "@/components/ui/button"
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
-import {createClient} from "@/lib/supabase/client"
-import {useRouter} from "next/navigation"
-import {useState, useEffect} from "react"
-import {Minus, Plus, Trash2, ShoppingBag, ArrowRight, Package} from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
+import {useRouter} from "next/navigation"
+import {useEffect, useMemo, useState} from "react"
+import {createClient} from "@/lib/supabase/client"
 import {guestCart} from "@/lib/cart-storage"
+import {Button} from "@/components/ui/button"
+import {Skeleton} from "@/components/ui/skeleton"
+import {
+    AlertCircle,
+    ArrowRight,
+    CreditCard,
+    Minus,
+    Package,
+    Plus,
+    ShieldCheck,
+    ShoppingBag,
+    Trash2,
+    Truck,
+    X,
+} from "lucide-react"
+import {cn} from "@/lib/utils"
 
 interface CartItem {
     id: string
@@ -17,124 +31,156 @@ interface CartItem {
         id: string
         name: string
         price: number
-        image_urls: string []
+        image_urls: string[]
         stock: number
     }
 }
 
-export default function CartContent({initialCartItems, isGuest}: { initialCartItems: CartItem[] | null, isGuest: boolean }) {
+interface ProductRow {
+    id: string
+    name: string
+    price: number
+    image_urls: string[]
+    stock: number
+}
+
+export default function CartContent({initialCartItems, isGuest}: {
+    initialCartItems: CartItem[] | null
+    isGuest: boolean
+}) {
     const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems || [])
-    const [isLoading, setIsLoading] = useState<string | null>(null)
+    const [pendingId, setPendingId] = useState<string | null>(null)
     const [isLoadingCart, setIsLoadingCart] = useState(isGuest)
+    const [error, setError] = useState<string | null>(null)
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
-    // Load guest cart from localStorage
+    // Load guest cart from localStorage once the client is available.
     useEffect(() => {
-        if (isGuest) {
-            const loadGuestCart = async () => {
-                const guestCartItems = guestCart.getItems()
+        if (!isGuest) return
 
-                if (guestCartItems.length === 0) {
+        let cancelled = false
+
+        const loadGuestCart = async () => {
+            const guestCartItems = guestCart.getItems()
+
+            if (guestCartItems.length === 0) {
+                if (!cancelled) {
                     setCartItems([])
                     setIsLoadingCart(false)
-                    return
                 }
-
-                // Fetch product details for guest cart items
-                const productIds = guestCartItems.map(item => item.productId)
-                const { data: products } = await supabase
-                    .from("products")
-                    .select("id, name, price, image_urls, stock")
-                    .in("id", productIds)
-
-                if (products) {
-                    const fullCartItems = guestCartItems.map(item => {
-                        const product = products.find((p: any) => p.id === item.productId)
-                        return {
-                            id: item.productId, // Use productId as temporary cart item id for guest
-                            product_id: item.productId,
-                            quantity: item.quantity,
-                            products: product!
-                        }
-                    }).filter(item => item.products) // Filter out any products that weren't found
-
-                    setCartItems(fullCartItems)
-                }
-                setIsLoadingCart(false)
+                return
             }
 
-            loadGuestCart()
+            const productIds = guestCartItems.map((item) => item.productId)
+            const {data: products} = await supabase
+                .from("products")
+                .select("id, name, price, image_urls, stock")
+                .in("id", productIds)
+
+            if (cancelled) return
+
+            const rows = (products ?? []) as ProductRow[]
+
+            const fullCartItems = guestCartItems
+                .map((item) => {
+                    const product = rows.find((candidate) => candidate.id === item.productId)
+                    return {
+                        id: item.productId,
+                        product_id: item.productId,
+                        quantity: item.quantity,
+                        products: product!,
+                    }
+                })
+                .filter((item) => Boolean(item.products))
+
+            setCartItems(fullCartItems)
+            setIsLoadingCart(false)
+        }
+
+        loadGuestCart()
+
+        return () => {
+            cancelled = true
         }
     }, [isGuest, supabase])
 
     const formatPrice = (value: number) =>
-        new Intl.NumberFormat("fr-DZ", {
-            style: "currency",
-            currency: "DZD",
-            minimumFractionDigits: 2,
-        }).format(value)
+        new Intl.NumberFormat("fr-DZ", {maximumFractionDigits: 0}).format(value) + " د.ج"
 
-    const subtotal = cartItems.reduce((sum, item) => sum + item.products.price * item.quantity, 0)
-    const shippingCost = 0 // Livraison gratuite
+    const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + Number(item.products.price) * item.quantity,
+        0,
+    )
+    const shippingCost = 0
     const total = subtotal + shippingCost
 
-    const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
-        if (newQuantity <= 0) {
-            handleRemoveItem(cartItemId)
-            return
-        }
+    const itemKey = (item: CartItem) => (isGuest ? item.product_id : item.id)
 
-        setIsLoading(cartItemId)
+    const handleUpdateQuantity = async (item: CartItem, nextQuantity: number) => {
+        const key = itemKey(item)
+        const clamped = Math.min(Math.max(1, nextQuantity), item.products.stock)
+
+        if (clamped === item.quantity || pendingId === key) return
+
+        setPendingId(key)
+        setError(null)
+
+        const previousItems = cartItems
+        setCartItems((items) =>
+            items.map((candidate) =>
+                itemKey(candidate) === key ? {...candidate, quantity: clamped} : candidate,
+            ),
+        )
+
         try {
             if (isGuest) {
-                // Update guest cart in localStorage
-                guestCart.updateQuantity(cartItemId, newQuantity)
-                setCartItems(cartItems.map((item) =>
-                    item.product_id === cartItemId ? {...item, quantity: newQuantity} : item
-                ))
+                guestCart.updateQuantity(key, clamped)
             } else {
-                const {error} = await supabase
+                const {error: updateError} = await supabase
                     .from("cart_items")
-                .update({quantity: newQuantity})
-                .eq("id", cartItemId)
+                    .update({quantity: clamped})
+                    .eq("id", key)
 
-                if (error) throw error
-
-                setCartItems(cartItems.map((item) =>
-                    item.id === cartItemId ? {...item, quantity: newQuantity} : item
-                ))
+                if (updateError) throw updateError
             }
-        } catch (error) {
-            console.error("Erreur lors de la mise à jour:", error)
-            alert("Une erreur s'est produite. Veuillez réessayer.")
+        } catch (updateError) {
+            console.error("Erreur lors de la mise à jour:", updateError)
+            setCartItems(previousItems)
+            setError("Impossible de mettre à jour la quantité. Veuillez réessayer.")
         } finally {
-            setIsLoading(null)
+            setPendingId(null)
         }
     }
 
-    const handleRemoveItem = async (cartItemId: string) => {
-        setIsLoading(cartItemId)
+    const handleRemoveItem = async (item: CartItem) => {
+        const key = itemKey(item)
+        if (pendingId === key) return
+
+        setPendingId(key)
+        setError(null)
+
+        const previousItems = cartItems
+        setCartItems((items) => items.filter((candidate) => itemKey(candidate) !== key))
+
         try {
             if (isGuest) {
-                // Remove from guest cart in localStorage
-                guestCart.removeItem(cartItemId)
-                setCartItems(cartItems.filter((item) => item.product_id !== cartItemId))
+                guestCart.removeItem(key)
             } else {
-                const {error} = await supabase
+                const {error: deleteError} = await supabase
                     .from("cart_items")
                     .delete()
-                    .eq("id", cartItemId)
+                    .eq("id", key)
 
-                if (error) throw error
-
-                setCartItems(cartItems.filter((item) => item.id !== cartItemId))
+                if (deleteError) throw deleteError
             }
-        } catch (error) {
-            console.error("Erreur lors de la suppression:", error)
-            alert("Une erreur s'est produite. Veuillez réessayer.")
+        } catch (deleteError) {
+            console.error("Erreur lors de la suppression:", deleteError)
+            setCartItems(previousItems)
+            setError("Impossible de retirer ce produit. Veuillez réessayer.")
         } finally {
-            setIsLoading(null)
+            setPendingId(null)
         }
     }
 
@@ -144,10 +190,43 @@ export default function CartContent({initialCartItems, isGuest}: { initialCartIt
 
     if (isLoadingCart) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="flex items-center justify-center">
-                        <p className="text-lg text-gray-600">Chargement...</p>
+            <div className="min-h-screen bg-background">
+                <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+                    <div className="mb-8 space-y-2">
+                        <Skeleton className="h-3 w-28"/>
+                        <Skeleton className="h-9 w-48"/>
+                        <Skeleton className="h-4 w-40"/>
+                    </div>
+                    <div className="grid gap-6 lg:grid-cols-12">
+                        <div className="space-y-3 lg:col-span-8">
+                            {Array.from({length: 3}).map((_, index) => (
+                                <div
+                                    key={index}
+                                    className="flex gap-3 rounded-3xl border border-border/60 bg-card p-3 sm:gap-4 sm:p-4"
+                                >
+                                    <Skeleton className="size-20 shrink-0 rounded-2xl sm:size-28"/>
+                                    <div className="flex-1 space-y-3 py-1">
+                                        <Skeleton className="h-4 w-3/4"/>
+                                        <Skeleton className="h-3 w-24"/>
+                                        <div className="flex items-center justify-between pt-3">
+                                            <Skeleton className="h-9 w-28 rounded-full"/>
+                                            <Skeleton className="h-4 w-20"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="lg:col-span-4">
+                            <div className="rounded-3xl border border-border/60 bg-card p-5">
+                                <Skeleton className="h-5 w-24"/>
+                                <div className="mt-5 space-y-3">
+                                    <Skeleton className="h-4 w-full"/>
+                                    <Skeleton className="h-4 w-full"/>
+                                    <Skeleton className="h-8 w-full"/>
+                                </div>
+                                <Skeleton className="mt-5 h-12 w-full rounded-xl"/>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -155,199 +234,308 @@ export default function CartContent({initialCartItems, isGuest}: { initialCartIt
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 max-w-7xl">
+        <div className="min-h-screen bg-background">
+            <div className="container mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:pb-12">
                 {/* Header */}
-                <div className="mb-6 sm:mb-8 lg:mb-10">
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                        Mon Panier
-                    </h1>
-                    <p className="text-sm sm:text-base text-gray-600">
-                        {cartItems.length} article{cartItems.length !== 1 ? "s" : ""} dans votre panier
-                    </p>
+                <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                            Votre sélection
+                        </p>
+                        <h1 className="mt-2 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
+                            Mon panier
+                        </h1>
+                        <p className="mt-1.5 text-sm text-muted-foreground">
+                            {itemCount} article{itemCount !== 1 ? "s" : ""}
+                            {itemCount > 0 && " · Paiement à la livraison"}
+                        </p>
+                    </div>
+
+                    <Link
+                        href="/products"
+                        className="hidden items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                    >
+                        Continuer mes achats
+                        <ArrowRight className="size-4"/>
+                    </Link>
                 </div>
 
+                {error && (
+                    <div
+                        role="alert"
+                        className="mb-4 flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                    >
+                        <AlertCircle className="mt-0.5 size-4 shrink-0"/>
+                        <p className="flex-1">{error}</p>
+                        <button
+                            type="button"
+                            onClick={() => setError(null)}
+                            aria-label="Masquer le message"
+                            className="flex size-5 items-center justify-center rounded-full transition-colors hover:bg-destructive/10"
+                        >
+                            <X className="size-3.5"/>
+                        </button>
+                    </div>
+                )}
+
                 {cartItems.length === 0 ? (
-                    /* Empty Cart State */
-                    <Card className="border-0 shadow-xl">
-                        <CardContent className="py-12 sm:py-16 lg:py-20">
-                            <div className="text-center max-w-md mx-auto">
-                                <div
-                                    className="mb-6 inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-100 to-blue-200">
-                                    <ShoppingBag className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600"/>
-                                </div>
-                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
-                                    Votre panier est vide
-                                </h2>
-                                <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
-                                    Découvrez nos produits et ajoutez vos articles préférés
-                                </p>
-                                <Button
-                                    onClick={() => router.push("/products")}
-                                    size="lg"
-                                    className="w-full sm:w-auto"
-                                >
-                                    <ShoppingBag className="w-4 h-4 mr-2"/>
-                                    Découvrir les produits
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                        {/* Cart Items */}
-                        <div className="lg:col-span-8 space-y-4">
-                            {cartItems.map((item) => (
-                                <Card key={item.id}
-                                      className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
-                                    <CardContent className="p-4 sm:p-6">
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                            {/* Product Image */}
-                                            <div
-                                                className="relative w-full sm:w-32 h-40 sm:h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                {item.products.image_urls?.[0] ? (
-                                                    <Image
-                                                        src={item.products.image_urls[0]}
-                                                        alt={item.products.name}
-                                                        fill
-                                                        className="object-cover"
-                                                        sizes="(max-width: 640px) 100vw, 128px"
-                                                    />
-                                                ) : (
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <Package className="w-12 h-12 text-gray-300"/>
-                                                    </div>
-                                                )}
-                                            </div>
+                    /* Empty cart */
+                    <div className="rounded-3xl border border-border/60 bg-card px-6 py-16 text-center sm:py-20">
+                        <span className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-primary/10 text-foreground">
+                            <ShoppingBag className="size-9" strokeWidth={1.5}/>
+                        </span>
+                        <h2 className="mt-6 text-2xl font-bold tracking-tight text-foreground">
+                            Votre panier est vide
+                        </h2>
+                        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                            Ajoutez vos produits préférés et retrouvez-les ici. Livraison rapide,
+                            paiement à la réception.
+                        </p>
 
-                                            {/* Product Details */}
-                                            <div className="flex-1 flex flex-col justify-between min-w-0">
-                                                <div>
-                                                    <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-2 line-clamp-2">
-                                                        {item.products.name}
-                                                    </h3>
-                                                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                                                        <p className="text-lg sm:text-xl font-bold text-primary">
-                                                            {formatPrice(item.products.price)}
-                                                        </p>
-                                                        {item.products.stock <= 5 && (
-                                                            <span
-                                                                className="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
-                                          Stock limité: {item.products.stock}
-                                        </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Quantity Controls & Remove */}
-                                                <div
-                                                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div
-                                                            className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-                                                            <Button
-                                                                onClick={() => handleUpdateQuantity(isGuest ? item.product_id : item.id, item.quantity - 1)}
-                                                                disabled={isLoading === (isGuest ? item.product_id : item.id)}
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-9 w-9 p-0 hover:bg-gray-100 rounded-none"
-                                                            >
-                                                                <Minus className="w-4 h-4"/>
-                                                            </Button>
-                                                            <span
-                                                                className="px-4 py-1.5 text-sm font-semibold min-w-[3rem] text-center">
-                                          {item.quantity}
-                                        </span>
-                                                            <Button
-                                                                onClick={() => handleUpdateQuantity(isGuest ? item.product_id : item.id, item.quantity + 1)}
-                                                                disabled={isLoading === (isGuest ? item.product_id : item.id) || item.quantity >= item.products.stock}
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-9 w-9 p-0 hover:bg-gray-100 rounded-none disabled:opacity-50"
-                                                            >
-                                                                <Plus className="w-4 h-4"/>
-                                                            </Button>
-                                                        </div>
-
-                                                        <div className="text-sm text-gray-600">
-                                                            Sous-total: <span className="font-semibold text-gray-900">
-                                          {formatPrice(item.products.price * item.quantity)}
-                                        </span>
-                                                        </div>
-                                                    </div>
-
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => handleRemoveItem(isGuest ? item.product_id : item.id)}
-                                                        disabled={isLoading === (isGuest ? item.product_id : item.id)}
-                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="w-4 h-4 mr-2"/>
-                                                        Retirer
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                        <div className="mt-7 flex flex-col items-center justify-center gap-2 sm:flex-row">
+                            <Link
+                                href="/products"
+                                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:shadow-lg hover:shadow-primary/25 sm:w-auto"
+                            >
+                                Découvrir les produits
+                                <ArrowRight className="size-4"/>
+                            </Link>
+                            <Link
+                                href="/"
+                                className="inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:w-auto"
+                            >
+                                Retour à l&apos;accueil
+                            </Link>
                         </div>
 
-                        {/* Order Summary */}
-                        <div className="lg:col-span-4">
-                            <Card className="border-0 shadow-xl sticky top-6">
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-xl font-bold text-gray-900">
-                                        Résumé de la commande
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-3 pb-4 border-b border-gray-200">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Sous-total</span>
-                                            <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Livraison</span>
-                                            <span className="font-semibold text-emerald-600">Selon l'emplacement</span>
-                                        </div>
-                                    </div>
+                        <ul className="mx-auto mt-10 grid max-w-lg gap-3 text-left sm:grid-cols-3">
+                            <li className="flex items-center gap-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5 text-[11px] text-muted-foreground">
+                                <Truck className="size-4 shrink-0"/>
+                                Livraison 2 à 5 jours
+                            </li>
+                            <li className="flex items-center gap-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5 text-[11px] text-muted-foreground">
+                                <CreditCard className="size-4 shrink-0"/>
+                                Paiement à la réception
+                            </li>
+                            <li className="flex items-center gap-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5 text-[11px] text-muted-foreground">
+                                <ShieldCheck className="size-4 shrink-0"/>
+                                Produits garantis
+                            </li>
+                        </ul>
+                    </div>
+                ) : (
+                    <div className="grid items-start gap-6 lg:grid-cols-12">
+                        {/* Items */}
+                        <div className="space-y-3 lg:col-span-8">
+                            {cartItems.map((item) => {
+                                const key = itemKey(item)
+                                const isPending = pendingId === key
+                                const isOutOfStock = item.products.stock <= 0
+                                const isLowStock = !isOutOfStock && item.products.stock <= 5
+                                const canIncrease = item.quantity < item.products.stock
 
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-lg font-bold text-gray-900">Total</span>
-                                        <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
+                                return (
+                                    <article
+                                        key={item.id}
+                                        aria-busy={isPending}
+                                        className={cn(
+                                            "group flex gap-3 rounded-3xl border border-border/60 bg-card p-3 transition-all sm:gap-4 sm:p-4",
+                                            "hover:border-border hover:shadow-[0_16px_32px_-24px_rgba(16,24,40,0.25)]",
+                                            isPending && "opacity-60",
+                                        )}
+                                    >
+                                        <Link
+                                            href={`/products/${item.product_id}`}
+                                            className="relative size-20 shrink-0 overflow-hidden rounded-2xl bg-muted/20 sm:size-28"
+                                            aria-label={`Voir ${item.products.name}`}
+                                        >
+                                            {item.products.image_urls?.[0] ? (
+                                                <Image
+                                                    src={item.products.image_urls[0]}
+                                                    alt={item.products.name}
+                                                    fill
+                                                    sizes="(max-width: 640px) 80px, 112px"
+                                                    className="object-contain p-2 transition-transform duration-300 group-hover:scale-[1.04]"
+                                                />
+                                            ) : (
+                                                <span className="flex h-full items-center justify-center">
+                                                    <Package className="size-8 text-muted-foreground/40"/>
+                                                </span>
+                                            )}
+                                        </Link>
+
+                                        <div className="flex min-w-0 flex-1 flex-col">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <Link
+                                                        href={`/products/${item.product_id}`}
+                                                        className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors hover:text-primary sm:text-[15px]"
+                                                    >
+                                                        {item.products.name}
+                                                    </Link>
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        {formatPrice(item.products.price)}
+                                                        <span className="text-[11px]"> / unité</span>
+                                                    </p>
+                                                    {isLowStock && (
+                                                        <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                                            <span className="size-1.5 rounded-full bg-amber-500"/>
+                                                            Plus que {item.products.stock}
+                                                        </span>
+                                                    )}
+                                                    {isOutOfStock && (
+                                                        <span className="mt-1.5 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                                                            Rupture de stock
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem(item)}
+                                                    disabled={isPending}
+                                                    aria-label={`Retirer ${item.products.name} du panier`}
+                                                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                                                >
+                                                    <Trash2 className="size-4"/>
+                                                </button>
+                                            </div>
+
+                                            <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-3">
+                                                <div className="flex items-center rounded-full border border-border bg-background p-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
+                                                        disabled={isPending}
+                                                        aria-label="Diminuer la quantité"
+                                                        className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Minus className="size-3.5"/>
+                                                    </button>
+                                                    <span className="min-w-8 text-center text-sm font-bold tabular-nums">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
+                                                        disabled={isPending || !canIncrease}
+                                                        aria-label="Augmenter la quantité"
+                                                        className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Plus className="size-3.5"/>
+                                                    </button>
+                                                </div>
+
+                                                <p className="text-sm font-bold tabular-nums text-foreground sm:text-base">
+                                                    {formatPrice(item.products.price * item.quantity)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
+                                )
+                            })}
+
+                            <Link
+                                href="/products"
+                                className="inline-flex items-center gap-1.5 pt-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                <ArrowRight className="size-4 rotate-180"/>
+                                Continuer mes achats
+                            </Link>
+                        </div>
+
+                        {/* Summary */}
+                        <aside className="lg:col-span-4">
+                            <div className="space-y-3 lg:sticky lg:top-24">
+                                <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
+                                    <h2 className="text-base font-semibold tracking-tight text-foreground">
+                                        Résumé de la commande
+                                    </h2>
+
+                                    <dl className="mt-4 space-y-3 text-sm">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <dt className="text-muted-foreground">
+                                                Sous-total ({itemCount} article{itemCount !== 1 ? "s" : ""})
+                                            </dt>
+                                            <dd className="font-semibold tabular-nums text-foreground">
+                                                {formatPrice(subtotal)}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <dt className="text-muted-foreground">Livraison</dt>
+                                            <dd className="font-medium text-muted-foreground">
+                                                Selon la wilaya
+                                            </dd>
+                                        </div>
+                                    </dl>
+
+                                    <div className="mt-4 flex items-end justify-between gap-3 border-t border-border/60 pt-4">
+                                        <span className="text-sm font-semibold text-foreground">Total</span>
+                                        <span className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
+                                            {formatPrice(total)}
+                                        </span>
                                     </div>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                        Les frais de livraison sont calculés à l&apos;étape suivante.
+                                    </p>
 
                                     <Button
                                         onClick={handleCheckout}
-                                        className="w-full h-12 text-base font-semibold"
                                         size="lg"
+                                        className="mt-4 h-12 w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20"
                                     >
-                                        Procéder au paiement
-                                        <ArrowRight className="w-5 h-5 ml-2"/>
+                                        Passer la commande
+                                        <ArrowRight className="size-4"/>
                                     </Button>
 
-                                    <div className="pt-4 space-y-2 text-xs text-gray-600">
-                                        <p className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            Paiement sécurisé
-                                        </p>
-                                        <p className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            Livraison partout en Algérie
-                                        </p>
-                                        <p className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            Garantie satisfaction
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                    <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                                        <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400"/>
+                                        Aucun prépaiement — vous payez à la réception
+                                    </p>
+                                </div>
+
+                                <ul className="space-y-2.5 rounded-3xl border border-border/60 bg-card/60 p-4 text-[11px] text-muted-foreground">
+                                    <li className="flex items-center gap-2">
+                                        <Truck className="size-4 shrink-0"/>
+                                        Livraison en 2 à 5 jours ouvrables
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CreditCard className="size-4 shrink-0"/>
+                                        Paiement à la livraison partout en Algérie
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <ShieldCheck className="size-4 shrink-0"/>
+                                        Produits vérifiés avant expédition
+                                    </li>
+                                </ul>
+                            </div>
+                        </aside>
                     </div>
                 )}
             </div>
+
+            {/* Mobile checkout bar */}
+            {cartItems.length > 0 && (
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+                    <div className="flex items-center gap-3 px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[11px] text-muted-foreground">
+                                Total ({itemCount} article{itemCount !== 1 ? "s" : ""})
+                            </p>
+                            <p className="text-lg font-bold leading-tight tabular-nums text-foreground">
+                                {formatPrice(total)}
+                            </p>
+                        </div>
+                        <Button
+                            onClick={handleCheckout}
+                            className="h-12 shrink-0 rounded-xl px-5 text-sm font-semibold"
+                        >
+                            Commander
+                            <ArrowRight className="size-4"/>
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
