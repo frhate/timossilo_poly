@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-  // Load environment variables from .env file
-  require('dotenv').config({ path: '.env' });
+  // Load environment variables from .env.local file
+  require('dotenv').config({ path: '.env.local' });
 
   /**
    * Script to set up the Telegram webhook
@@ -13,7 +13,7 @@
   async function setupWebhook(domain) {
     if (!BOT_TOKEN) {
       console.error('❌ TELEGRAM_BOT_TOKEN environment variable is not set');
-      console.log('Please check your .env file');
+      console.log('Please check your .env.local file');
       process.exit(1);
     }
 

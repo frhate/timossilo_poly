@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-require('dotenv').config({ path: '.env' });
+require('dotenv').config({ path: '.env.local' });
 
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -12,13 +12,13 @@ async function testTelegramNotification() {
 
   if (!BOT_TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN environment variable is not set');
-    console.log('Please check your .env file');
+    console.log('Please check your .env.local file');
     process.exit(1);
   }
 
   if (!ADMIN_CHAT_ID) {
     console.error('❌ TELEGRAM_ADMIN_CHAT_ID environment variable is not set');
-    console.log('Please check your .env file');
+    console.log('Please check your .env.local file');
     process.exit(1);
   }
 

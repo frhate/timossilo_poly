@@ -62,7 +62,7 @@ export default async function ProductDetailPage({params,
             />
             <Navigation />
             <ProductDetails product={product} />
-            <div className="container mx-auto px-4 max-w-7xl">
+            <div className="container mx-auto px-4 max-w-7xl pb-24 lg:pb-0">
                 <RelatedProducts
                     currentProductId={product.id}
                     brandId={product.brand_id ?? null}

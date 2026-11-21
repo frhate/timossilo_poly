@@ -73,7 +73,7 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -137,4 +137,5 @@ scripts/migrate-cloudinary-to-server.sh
 scripts/setup-server-storage.sh
 .env.example
 components/FacebookPixel.tsx
+next-env.d.ts
 next-env.d.ts
